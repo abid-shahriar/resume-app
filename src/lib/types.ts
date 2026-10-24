@@ -71,10 +71,20 @@ export interface ContactField {
   visible: boolean
 }
 
+export interface PhotoCrop {
+  /** Cropped area in percentages of the (rotated) source image */
+  area: { x: number; y: number; width: number; height: number }
+  rotation: number
+}
+
 export interface Basics {
   name: string
   headline: string
+  /** Final cropped square photo (JPEG data URL) */
   photo: string
+  /** Downscaled original, kept so the crop can be adjusted later */
+  photoSource: string
+  photoCrop: PhotoCrop | null
   photoVisible: boolean
   contacts: ContactField[]
 }
@@ -123,13 +133,35 @@ export interface Design {
   presentLabel: string
 }
 
+export type LayoutKey = 'classic' | 'sidebar' | 'timeline' | 'swiss'
+/** classic/timeline/swiss: standard | split | banner — sidebar layouts: top | banner | sidebar | main */
+export type HeaderKind = 'standard' | 'split' | 'banner' | 'sidebar' | 'top' | 'main'
+export type EntryKind = 'stacked' | 'dateLeft'
+export type SectionFlow = 'standard' | 'timeline' | 'labels'
+
+/** Structure of a "Custom" resume, fully chosen by the user. */
+export interface CustomLayout {
+  columns: 1 | 2
+  header: HeaderKind
+  photo: boolean
+  /** Single-column flow: plain, vertical timeline, or section labels in a left gutter */
+  flow: SectionFlow
+  entry: EntryKind
+  sectionDividers: boolean
+  headerDivider: boolean
+  columnDivider: boolean
+  strip: boolean
+}
+
 export interface Resume {
   id: string
   title: string
+  /** A template id from the registry, or 'custom' for a user-built layout */
   templateId: string
   createdAt: number
   updatedAt: number
   basics: Basics
   sections: Section[]
   design: Design
+  customLayout: CustomLayout
 }

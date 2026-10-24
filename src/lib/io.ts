@@ -1,8 +1,8 @@
 import { CONTACT_KINDS } from '@/templates/icons'
-import { getTemplate, TEMPLATE_MAP, templateDesign } from '@/templates/registry'
+import { DEFAULT_CUSTOM_LAYOUT, getTemplate, isValidTemplateId, templateDesign } from '@/templates/registry'
 import { BASE_DESIGN, createContact, createItem, createSection } from './defaults'
 import { SECTION_TYPES } from './sections'
-import type { ContactField, Design, Resume, Section, SectionItem } from './types'
+import type { ContactField, CustomLayout, Design, PhotoCrop, Resume, Section, SectionItem } from './types'
 import { downloadFile, slugify, uid } from './utils'
 
 const FORMAT = 'vitae-resume'
@@ -63,6 +63,16 @@ function sanitizeContact(raw: unknown): ContactField | null {
   return { ...createContact(kind, str(r.value, 500), str(r.url, 2000)), id: str(r.id, 40) || uid(), visible: bool(r.visible, true) }
 }
 
+export function sanitizeCrop(raw: unknown): PhotoCrop | null {
+  const r = raw as { area?: Record<string, unknown>; rotation?: unknown } | null | undefined
+  const a = r?.area
+  if (!a) return null
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : NaN)
+  const area = { x: n(a.x), y: n(a.y), width: n(a.width), height: n(a.height) }
+  if (Object.values(area).some(Number.isNaN) || area.width <= 0 || area.height <= 0) return null
+  return { area, rotation: num(r?.rotation, 0, -360, 360) }
+}
+
 function sanitizeDesign(raw: unknown, templateId: string): Design {
   const base = templateDesign(templateId)
   const r = (raw ?? {}) as Record<string, unknown>
@@ -87,9 +97,10 @@ function sanitizeDesign(raw: unknown, templateId: string): Design {
 
 export function sanitizeResume(raw: unknown): Resume {
   const r = (raw ?? {}) as Record<string, unknown>
-  const templateId = typeof r.templateId === 'string' && TEMPLATE_MAP[r.templateId] ? r.templateId : getTemplate('').id
+  const templateId = isValidTemplateId(r.templateId) ? r.templateId : getTemplate('').id
   const b = (r.basics ?? {}) as Record<string, unknown>
   const photo = str(b.photo, 2_000_000)
+  const photoSource = str(b.photoSource, 4_000_000)
   return {
     id: str(r.id, 40) || uid(),
     title: str(r.title, 200) || 'Imported Resume',
@@ -100,11 +111,31 @@ export function sanitizeResume(raw: unknown): Resume {
       name: str(b.name, 200),
       headline: str(b.headline, 300),
       photo: photo.startsWith('data:image/') ? photo : '',
+      photoSource: photoSource.startsWith('data:image/') ? photoSource : '',
+      photoCrop: sanitizeCrop(b.photoCrop),
       photoVisible: bool(b.photoVisible, true),
       contacts: Array.isArray(b.contacts) ? (b.contacts.map(sanitizeContact).filter(Boolean) as ContactField[]) : [],
     },
     sections: Array.isArray(r.sections) ? (r.sections.map(sanitizeSection).filter(Boolean) as Section[]) : [],
     design: sanitizeDesign(r.design, templateId),
+    customLayout: sanitizeCustomLayout(r.customLayout),
+  }
+}
+
+function sanitizeCustomLayout(raw: unknown): CustomLayout {
+  const r = (raw ?? {}) as Record<string, unknown>
+  const d = DEFAULT_CUSTOM_LAYOUT
+  const oneOf = <T extends string>(v: unknown, opts: readonly T[], fallback: T): T => (opts.includes(v as T) ? (v as T) : fallback)
+  return {
+    columns: r.columns === 1 || r.columns === 2 ? r.columns : d.columns,
+    header: oneOf(r.header, ['standard', 'split', 'banner', 'sidebar', 'top', 'main'] as const, d.header),
+    photo: bool(r.photo, d.photo),
+    flow: oneOf(r.flow, ['standard', 'timeline', 'labels'] as const, d.flow),
+    entry: oneOf(r.entry, ['stacked', 'dateLeft'] as const, d.entry),
+    sectionDividers: bool(r.sectionDividers, d.sectionDividers),
+    headerDivider: bool(r.headerDivider, d.headerDivider),
+    columnDivider: bool(r.columnDivider, d.columnDivider),
+    strip: bool(r.strip, d.strip),
   }
 }
 

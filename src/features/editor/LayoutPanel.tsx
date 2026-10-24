@@ -11,10 +11,10 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { ArrowLeftRight, Eye, EyeOff, Info } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Tooltip } from '@/components/ui/controls'
+import { Tip } from '@/components/kit'
 import type { Column, Section } from '@/lib/types'
 import { arrayMove, cn } from '@/lib/utils'
-import { getTemplate } from '@/templates/registry'
+import { resolveTemplate } from '@/templates/registry'
 import { hasContent } from '@/templates/shared'
 import { useEditor, useEditorSelect } from './context'
 import { DragHandle, useDndSensors, useSortableItem } from './dnd'
@@ -55,37 +55,37 @@ function LayoutCardView({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex items-center gap-1 rounded-lg border bg-surface py-1 pl-1 pr-1.5 transition-[box-shadow,border-color,opacity]',
-        overlay ? 'rotate-[1.5deg] border-accent shadow-lg' : 'border-border shadow-xs',
+        'flex items-center gap-1 rounded-lg border bg-card py-1 pl-1 pr-1.5 transition-[box-shadow,border-color,opacity]',
+        overlay ? 'rotate-[1.5deg] border-primary shadow-lg' : 'border-border shadow-xs',
         isDragging && !overlay && 'opacity-30',
-        !section.visible && 'bg-surface-2',
+        !section.visible && 'bg-muted',
       )}
     >
       <DragHandle {...handleProps} />
-      <Icon className={cn('size-4 shrink-0 text-muted', !section.visible && 'opacity-50')} />
-      <span className={cn('min-w-0 flex-1 truncate pl-1.5 text-[13px] font-medium', !section.visible && 'text-muted line-through')}>
+      <Icon className={cn('size-4 shrink-0 text-muted-foreground', !section.visible && 'opacity-50')} />
+      <span className={cn('min-w-0 flex-1 truncate pl-1.5 text-[13px] font-medium', !section.visible && 'text-muted-foreground line-through')}>
         {section.title}
       </span>
       {empty && section.visible && (
-        <Tooltip content="Empty sections are not shown">
-          <span className="rounded bg-surface-2 px-1 text-[10px] font-medium text-subtle">Empty</span>
-        </Tooltip>
+        <Tip content="Empty sections are not shown">
+          <span className="rounded bg-muted px-1 text-[10px] font-medium text-subtle">Empty</span>
+        </Tip>
       )}
       {!twoCol && (
-        <Tooltip content={`Placed in ${section.column === 'main' ? 'main column' : 'sidebar'} for two-column templates`}>
+        <Tip content={`Placed in ${section.column === 'main' ? 'main column' : 'sidebar'} for two-column templates`}>
           <Button
             variant="subtle"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => mutate((s) => void (s.column = s.column === 'main' ? 'sidebar' : 'main'))}
             aria-label="Toggle column"
           >
             <ArrowLeftRight />
           </Button>
-        </Tooltip>
+        </Tip>
       )}
       <Button
         variant="subtle"
-        size="icon-xs"
+        size="icon-sm"
         onClick={() => mutate((s) => void (s.visible = !s.visible))}
         aria-label={section.visible ? 'Hide section' : 'Show section'}
       >
@@ -107,7 +107,7 @@ function ColumnDrop({ id, title, sections, twoCol }: { id: Column; title: string
         ref={setNodeRef}
         className={cn(
           'flex min-h-28 flex-col gap-1.5 rounded-xl border border-dashed p-1.5 transition-colors',
-          isOver ? 'border-accent bg-accent-soft/40' : 'border-border bg-surface-2/40',
+          isOver ? 'border-primary bg-primary-soft/40' : 'border-border bg-muted/40',
         )}
       >
         <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
@@ -115,7 +115,7 @@ function ColumnDrop({ id, title, sections, twoCol }: { id: Column; title: string
             <LayoutCard key={s.id} section={s} twoCol={twoCol} />
           ))}
         </SortableContext>
-        {sections.length === 0 && <div className="grid flex-1 place-items-center py-6 text-xs text-muted">Drop sections here</div>}
+        {sections.length === 0 && <div className="grid flex-1 place-items-center py-6 text-xs text-muted-foreground">Drop sections here</div>}
       </div>
     </div>
   )
@@ -124,10 +124,10 @@ function ColumnDrop({ id, title, sections, twoCol }: { id: Column; title: string
 export function LayoutPanel() {
   const { update } = useEditor()
   const sections = useEditorSelect((r) => r.sections)
-  const templateId = useEditorSelect((r) => r.templateId)
+  // Select primitives: resolveTemplate builds a new object for custom layouts
+  const twoCol = useEditorSelect((r) => resolveTemplate(r).layout === 'sidebar')
+  const templateName = useEditorSelect((r) => resolveTemplate(r).name)
   const side = useEditorSelect((r) => r.design.sidebarSide)
-  const template = getTemplate(templateId)
-  const twoCol = template.layout === 'sidebar'
   const sensors = useDndSensors()
   const [activeId, setActiveId] = useState<string | null>(null)
 
@@ -187,18 +187,18 @@ export function LayoutPanel() {
 
   return (
     <div className="flex flex-col gap-4 p-3 sm:p-4">
-      <div className="flex gap-3 rounded-xl border border-border bg-surface p-3 text-sm text-muted">
-        <Info className="mt-0.5 size-4 shrink-0 text-accent" />
+      <div className="flex gap-3 rounded-xl border border-border bg-card p-3 text-sm text-muted-foreground">
+        <Info className="mt-0.5 size-4 shrink-0 text-primary" />
         <p>
           {twoCol ? (
             <>
-              <span className="font-medium text-foreground">{template.name}</span> has two columns. Drag sections to reorder them or move them
+              <span className="font-medium text-foreground">{templateName}</span> has two columns. Drag sections to reorder them or move them
               between the main column and the sidebar.
             </>
           ) : (
             <>
-              <span className="font-medium text-foreground">{template.name}</span> is a single-column template. Drag to reorder. Use{' '}
-              <ArrowLeftRight className="inline size-3.5" /> to choose where a section goes in two-column templates.
+              <span className="font-medium text-foreground">{templateName}</span> uses a single column. Drag to reorder. Use{' '}
+              <ArrowLeftRight className="inline size-3.5" /> to choose where a section goes in two-column layouts.
             </>
           )}
         </p>

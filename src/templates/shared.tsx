@@ -26,7 +26,10 @@ type Region = 'main' | 'sidebar'
 
 export function hasContent(section: Section): boolean {
   if (!section.visible) return false
-  if (SECTION_CONFIG[section.type].kind === 'text') return !!section.content.trim()
+  const kind = SECTION_CONFIG[section.type].kind
+  if (kind === 'text') return !!section.content.trim()
+  // List sections (skills, languages…) only render items that have a name or keywords
+  if (kind === 'list') return section.items.some((i) => i.visible && (i.title.trim() || i.keywords.length))
   return section.items.some((i) => i.visible && (i.title.trim() || i.subtitle.trim() || i.description.trim() || i.keywords.length))
 }
 

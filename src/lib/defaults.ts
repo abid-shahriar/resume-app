@@ -75,6 +75,8 @@ export function sampleResume(): Pick<Resume, 'basics' | 'sections'> {
       name: 'Sophia Bennett',
       headline: 'Senior Product Designer',
       photo: '',
+      photoSource: '',
+      photoCrop: null,
       photoVisible: true,
       contacts: [
         createContact('email', 'sophia.bennett@email.com'),
@@ -174,6 +176,8 @@ export function blankResume(): Pick<Resume, 'basics' | 'sections'> {
       name: '',
       headline: '',
       photo: '',
+      photoSource: '',
+      photoCrop: null,
       photoVisible: true,
       contacts: [createContact('email'), createContact('phone'), createContact('location')],
     },

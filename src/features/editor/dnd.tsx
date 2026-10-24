@@ -81,7 +81,7 @@ export const DragHandle = forwardRef<HTMLButtonElement, HTMLAttributes<HTMLButto
         type="button"
         aria-label={label}
         className={cn(
-          'grid size-8 shrink-0 cursor-grab touch-none place-items-center rounded-md text-subtle transition-colors hover:bg-surface-2 hover:text-foreground active:cursor-grabbing md:size-7',
+          'grid size-8 shrink-0 cursor-grab touch-none place-items-center rounded-md text-subtle transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing md:size-7',
           className,
         )}
         {...props}

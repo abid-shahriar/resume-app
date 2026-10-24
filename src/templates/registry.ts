@@ -1,10 +1,8 @@
 import { BASE_DESIGN } from '@/lib/defaults'
-import type { Design } from '@/lib/types'
+import type { CustomLayout, Design, EntryKind, HeaderKind, LayoutKey, Resume } from '@/lib/types'
 
-export type LayoutKey = 'classic' | 'sidebar' | 'timeline' | 'swiss'
-export type HeaderKind = 'standard' | 'split' | 'banner' | 'sidebar' | 'top' | 'main'
-export type EntryKind = 'stacked' | 'dateLeft'
-export type TemplateCategory = 'Professional' | 'Modern' | 'Creative' | 'Minimal'
+export type { EntryKind, HeaderKind, LayoutKey }
+export type TemplateCategory = 'Professional' | 'Modern' | 'Creative' | 'Minimal' | 'Custom'
 
 export interface TemplateDef {
   id: string
@@ -14,11 +12,17 @@ export interface TemplateDef {
   layout: LayoutKey
   header: HeaderKind
   entry: EntryKind
-  /** Shows the photo / monogram when the user enables it */
+  /** Whether the layout has a photo slot (upload is hidden otherwise) */
   photo: boolean
   atsFriendly: boolean
   /** Thin colored strip along the left page edge */
   strip?: boolean
+  /** Horizontal rule between sections */
+  dividers?: boolean
+  /** Rule under the header */
+  headerDivider?: boolean
+  /** Vertical rule between columns (defaults to on for the "plain" sidebar tone) */
+  columnDivider?: boolean
   design: Partial<Design>
 }
 
@@ -605,9 +609,90 @@ export const TEMPLATE_MAP: Record<string, TemplateDef> = Object.fromEntries(TEMP
 
 export const DEFAULT_TEMPLATE_ID = 'onyx'
 
+/* --------------------------------- custom --------------------------------- */
+
+export const CUSTOM_TEMPLATE_ID = 'custom'
+
+export const DEFAULT_CUSTOM_LAYOUT: CustomLayout = {
+  columns: 2,
+  header: 'sidebar',
+  photo: true,
+  flow: 'standard',
+  entry: 'stacked',
+  sectionDividers: false,
+  headerDivider: false,
+  columnDivider: true,
+  strip: false,
+}
+
+const CUSTOM_DESIGN: Partial<Design> = {
+  accent: '#0d8580',
+  headingFont: 'Manrope',
+  bodyFont: 'Inter',
+  sidebarTone: 'tint',
+  headingStyle: 'line',
+  skillStyle: 'bars',
+}
+
+export const ONE_COLUMN_HEADERS: HeaderKind[] = ['standard', 'split', 'banner']
+export const TWO_COLUMN_HEADERS: HeaderKind[] = ['top', 'banner', 'sidebar', 'main']
+
+/** Builds a template definition from a user's custom layout. */
+export function customTemplate(l: CustomLayout): TemplateDef {
+  const two = l.columns === 2
+  const layout: LayoutKey = two ? 'sidebar' : l.flow === 'timeline' ? 'timeline' : l.flow === 'labels' ? 'swiss' : 'classic'
+  const header = two
+    ? TWO_COLUMN_HEADERS.includes(l.header) ? l.header : 'top'
+    : ONE_COLUMN_HEADERS.includes(l.header) ? l.header : 'standard'
+  return {
+    id: CUSTOM_TEMPLATE_ID,
+    name: 'Custom',
+    description: 'Your own layout. Choose columns, header, photo, lines and more.',
+    category: 'Custom',
+    layout,
+    header,
+    entry: layout === 'timeline' ? 'dateLeft' : l.entry,
+    photo: l.photo,
+    atsFriendly: !two && !l.photo,
+    strip: l.strip,
+    dividers: l.sectionDividers,
+    headerDivider: l.headerDivider,
+    columnDivider: two && l.columnDivider,
+    design: CUSTOM_DESIGN,
+  }
+}
+
+/** Starting point for "Convert to custom": reproduces the template's structure. */
+export function customFromTemplate(t: TemplateDef, design: Design): CustomLayout {
+  if (t.id === CUSTOM_TEMPLATE_ID) return { ...DEFAULT_CUSTOM_LAYOUT }
+  return {
+    columns: t.layout === 'sidebar' ? 2 : 1,
+    header: t.header,
+    photo: t.photo,
+    flow: t.layout === 'timeline' ? 'timeline' : t.layout === 'swiss' ? 'labels' : 'standard',
+    entry: t.entry,
+    sectionDividers: t.dividers ?? t.layout === 'swiss',
+    headerDivider: !!t.headerDivider,
+    columnDivider: t.columnDivider ?? design.sidebarTone === 'plain',
+    strip: !!t.strip,
+  }
+}
+
+const CUSTOM_DEF = customTemplate(DEFAULT_CUSTOM_LAYOUT)
+
 export function getTemplate(id: string): TemplateDef {
+  if (id === CUSTOM_TEMPLATE_ID) return CUSTOM_DEF
   return TEMPLATE_MAP[id] ?? TEMPLATE_MAP[DEFAULT_TEMPLATE_ID]
 }
+
+/** The effective template for a resume (custom resumes derive it from their layout). */
+export function resolveTemplate(resume: Pick<Resume, 'templateId' | 'customLayout'>): TemplateDef {
+  if (resume.templateId === CUSTOM_TEMPLATE_ID) return customTemplate(resume.customLayout ?? DEFAULT_CUSTOM_LAYOUT)
+  return getTemplate(resume.templateId)
+}
+
+export const isValidTemplateId = (id: unknown): id is string =>
+  typeof id === 'string' && (id === CUSTOM_TEMPLATE_ID || id in TEMPLATE_MAP)
 
 export function templateDesign(id: string): Design {
   return { ...BASE_DESIGN, ...getTemplate(id).design }

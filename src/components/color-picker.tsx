@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
 export const ACCENT_PRESETS = [
@@ -36,7 +36,12 @@ function normalize(hex: string) {
 
 export function ColorInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label?: string }) {
   const [draft, setDraft] = useState(value)
-  useEffect(() => setDraft(value), [value])
+  const [synced, setSynced] = useState(value)
+  // Follow external changes (swatches, undo) without an effect
+  if (value !== synced) {
+    setSynced(value)
+    setDraft(value)
+  }
   return (
     <div className="flex items-center gap-2">
       <label
@@ -62,7 +67,7 @@ export function ColorInput({ value, onChange, label }: { value: string; onChange
         }}
         onBlur={() => setDraft(value)}
         spellCheck={false}
-        className="h-9 w-full min-w-0 rounded-lg border border-border bg-surface px-2.5 font-mono uppercase text-foreground shadow-xs outline-none focus:border-accent focus:ring-4 focus:ring-accent/15 md:text-[13px]"
+        className="h-9 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 font-mono uppercase text-foreground outline-none transition-[border-color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 md:text-[13px]"
         aria-label={`${label ?? 'Color'} hex value`}
       />
     </div>
@@ -84,7 +89,7 @@ export function ColorSwatches({ value, onChange }: { value: string; onChange: (v
             aria-pressed={active}
             className={cn(
               'relative grid size-8 place-items-center rounded-full transition-transform md:size-7 duration-200 ease-[var(--ease-spring)] hover:scale-110 active:scale-95',
-              active && 'ring-2 ring-offset-2 ring-offset-surface',
+              active && 'ring-2 ring-offset-2 ring-offset-card',
             )}
             style={{ background: c, ['--tw-ring-color' as string]: c }}
           >

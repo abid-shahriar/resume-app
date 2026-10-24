@@ -1,74 +1,158 @@
-import { Dialog as RDialog } from 'radix-ui'
-import { X } from 'lucide-react'
-import type { ReactNode } from 'react'
-import { cn } from '@/lib/utils'
-import { Button } from './button'
+import * as React from "react"
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
+import { cn } from "cn"
 
-/**
- * Responsive dialog: centered modal on desktop, bottom sheet on mobile.
- */
-export function Dialog({
-  open,
-  onOpenChange,
-  title,
-  description,
-  children,
-  footer,
+import { Button } from "@/components/ui/button"
+import { XIcon } from "lucide-react"
+
+function Dialog({ ...props }: DialogPrimitive.Root.Props) {
+  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+}
+
+function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
+  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
+}
+
+function DialogPortal({ ...props }: DialogPrimitive.Portal.Props) {
+  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
+}
+
+function DialogClose({ ...props }: DialogPrimitive.Close.Props) {
+  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
+}
+
+function DialogOverlay({
   className,
-  size = 'md',
-  trigger,
-}: {
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  title: ReactNode
-  description?: ReactNode
-  children?: ReactNode
-  footer?: ReactNode
-  className?: string
-  size?: 'sm' | 'md' | 'lg' | 'xl'
-  trigger?: ReactNode
-}) {
-  const width = { sm: 'sm:max-w-sm', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl', xl: 'sm:max-w-5xl' }[size]
+  ...props
+}: DialogPrimitive.Backdrop.Props) {
   return (
-    <RDialog.Root open={open} onOpenChange={onOpenChange}>
-      {trigger && <RDialog.Trigger asChild>{trigger}</RDialog.Trigger>}
-      <RDialog.Portal>
-        <RDialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] data-[state=closed]:animate-[fade-out_150ms_ease-in_both] data-[state=open]:animate-fade-in" />
-        <RDialog.Content
-          className={cn(
-            'fixed z-50 flex max-h-[92dvh] w-full flex-col overflow-hidden border border-border bg-surface shadow-lg outline-none',
-            'inset-x-0 bottom-0 rounded-t-2xl data-[state=closed]:animate-[sheet-out_200ms_ease-in_both] data-[state=open]:animate-[sheet-in_380ms_var(--ease-out-expo)_both]',
-            'sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:data-[state=closed]:animate-[dialog-out_150ms_ease-in_both] sm:data-[state=open]:animate-[dialog-in_280ms_var(--ease-out-expo)_both]',
-            width,
-            className,
-          )}
-        >
-          <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border-strong sm:hidden" />
-          <div className="flex items-start justify-between gap-4 px-5 pb-3 pt-4 sm:px-6 sm:pt-5">
-            <div className="min-w-0">
-              <RDialog.Title className="text-base font-semibold tracking-tight">{title}</RDialog.Title>
-              {description ? (
-                <RDialog.Description className="mt-1 text-sm text-muted">{description}</RDialog.Description>
-              ) : (
-                <RDialog.Description className="sr-only">{typeof title === 'string' ? title : 'Dialog'}</RDialog.Description>
-              )}
-            </div>
-            <RDialog.Close asChild>
-              <Button variant="subtle" size="icon-sm" aria-label="Close" className="-mr-2 -mt-1">
-                <X />
-              </Button>
-            </RDialog.Close>
-          </div>
-          {children && <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 scrollbar-thin sm:px-6">{children}</div>}
-          {footer && (
-            <div className="flex flex-col-reverse gap-2 border-t border-border bg-surface-2/50 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:px-6">
-              {footer}
-            </div>
-          )}
-        </RDialog.Content>
-      </RDialog.Portal>
-    </RDialog.Root>
+    <DialogPrimitive.Backdrop
+      data-slot="dialog-overlay"
+      className={cn(
+        "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        className
+      )}
+      {...props}
+    />
   )
 }
 
-export const DialogClose = RDialog.Close
+function DialogContent({
+  className,
+  children,
+  showCloseButton = true,
+  ...props
+}: DialogPrimitive.Popup.Props & {
+  showCloseButton?: boolean
+}) {
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Popup
+        data-slot="dialog-content"
+        className={cn(
+          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          className
+        )}
+        {...props}
+      >
+        {children}
+        {showCloseButton && (
+          <DialogPrimitive.Close
+            data-slot="dialog-close"
+            render={
+              <Button
+                variant="ghost"
+                className="absolute top-2 right-2"
+                size="icon-sm"
+              />
+            }
+          >
+            <XIcon
+            />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        )}
+      </DialogPrimitive.Popup>
+    </DialogPortal>
+  )
+}
+
+function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-header"
+      className={cn("flex flex-col gap-2", className)}
+      {...props}
+    />
+  )
+}
+
+function DialogFooter({
+  className,
+  showCloseButton = false,
+  children,
+  ...props
+}: React.ComponentProps<"div"> & {
+  showCloseButton?: boolean
+}) {
+  return (
+    <div
+      data-slot="dialog-footer"
+      className={cn(
+        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      {showCloseButton && (
+        <DialogPrimitive.Close render={<Button variant="outline" />}>
+          Close
+        </DialogPrimitive.Close>
+      )}
+    </div>
+  )
+}
+
+function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
+  return (
+    <DialogPrimitive.Title
+      data-slot="dialog-title"
+      className={cn(
+        "font-heading text-base leading-none font-medium",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function DialogDescription({
+  className,
+  ...props
+}: DialogPrimitive.Description.Props) {
+  return (
+    <DialogPrimitive.Description
+      data-slot="dialog-description"
+      className={cn(
+        "text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+}

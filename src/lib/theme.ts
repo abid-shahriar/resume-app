@@ -3,6 +3,7 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react'
 export type ThemePref = 'light' | 'dark' | 'system'
 const KEY = 'vitae:theme'
 const listeners = new Set<() => void>()
+const notify = () => listeners.forEach((l) => l())
 
 function read(): ThemePref {
   try {
@@ -13,20 +14,27 @@ function read(): ThemePref {
   }
 }
 
+const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches
+
 function apply(pref: ThemePref) {
-  const dark = pref === 'dark' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  const dark = pref === 'dark' || (pref === 'system' && systemDark())
   document.documentElement.classList.toggle('dark', dark)
 }
 
+function subscribe(cb: () => void) {
+  listeners.add(cb)
+  const mq = window.matchMedia('(prefers-color-scheme: dark)')
+  mq.addEventListener('change', cb)
+  return () => {
+    listeners.delete(cb)
+    mq.removeEventListener('change', cb)
+  }
+}
+
+let switchTimer: ReturnType<typeof setTimeout> | undefined
+
 export function useTheme() {
-  const pref = useSyncExternalStore(
-    (cb) => {
-      listeners.add(cb)
-      return () => listeners.delete(cb)
-    },
-    read,
-    () => 'system' as ThemePref,
-  )
+  const pref = useSyncExternalStore(subscribe, read, () => 'system' as ThemePref)
 
   useEffect(() => {
     apply(pref)
@@ -43,14 +51,26 @@ export function useTheme() {
     } catch {
       /* ignore */
     }
-    const run = () => {
-      apply(next)
-      listeners.forEach((l) => l())
-    }
-    if ('startViewTransition' in document && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      document.startViewTransition(run)
-    } else run()
+    // Animate colors only for the switch itself, so normal interactions keep their own transitions
+    const root = document.documentElement
+    root.classList.add('theme-switching')
+    apply(next)
+    notify()
+    clearTimeout(switchTimer)
+    switchTimer = setTimeout(() => root.classList.remove('theme-switching'), 320)
   }, [])
 
   return { theme: pref, setTheme }
+}
+
+/** Whether the dark theme is currently in effect (preference or system). */
+export function useIsDark() {
+  return useSyncExternalStore(
+    subscribe,
+    () => {
+      const p = read()
+      return p === 'dark' || (p === 'system' && systemDark())
+    },
+    () => false,
+  )
 }

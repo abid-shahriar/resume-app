@@ -1,81 +1,162 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/geist';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------------------------------------------------------------------------
-   Design tokens — a warm neutral scale with a single violet accent.
+   Theme — shadcn/ui semantic tokens (background/foreground pairs) with a
+   blue-green (teal) primary. App-specific extras: primary-soft, subtle,
+   border-strong, success, canvas.
    --------------------------------------------------------------------------- */
 :root {
-  --background: #fafaf9;
-  --surface: #ffffff;
-  --surface-2: #f5f5f4;
-  --surface-3: #eeedeb;
-  --foreground: #1c1917;
-  --muted: #78716c;
-  --subtle: #a8a29e;
-  --border: #e7e5e4;
-  --border-strong: #d6d3d1;
-  --primary: #1c1917;
-  --primary-foreground: #fafaf9;
-  --accent: #6d5efc;
-  --accent-soft: #efedff;
-  --accent-foreground: #4b3fd6;
-  --danger: #dc2626;
-  --danger-soft: #fef2f2;
+  --radius: 0.625rem;
+
+  --background: #f7f8f8;
+  --foreground: #16191c;
+  --card: #ffffff;
+  --card-foreground: #16191c;
+  --popover: #ffffff;
+  --popover-foreground: #16191c;
+  --primary: #0d8580;
+  --primary-foreground: #ffffff;
+  --secondary: #eef1f2;
+  --secondary-foreground: #16191c;
+  --muted: #f0f2f3;
+  --muted-foreground: #687076;
+  --accent: #ebeff0;
+  --accent-foreground: #16191c;
+  --destructive: #dc2626;
+  --border: #e2e6e8;
+  --input: #d9dee1;
+  --ring: #0d8580;
+
+  --primary-soft: #e1f3f1;
+  --primary-soft-foreground: #0a6460;
+  --subtle: #9aa1a6;
+  --border-strong: #cbd2d6;
   --success: #16a34a;
-  --canvas: #ecebe8;
-  --canvas-dot: #d9d7d3;
-  --ring: color-mix(in srgb, var(--accent) 45%, transparent);
-  --shadow-color: 28 25 23;
+  --canvas: #e8ebec;
+  --canvas-dot: #d2d8da;
+  --shadow-color: 15 23 30;
+
+  --chart-1: #0d8580;
+  --chart-2: #2bb8a9;
+  --chart-3: #0e7490;
+  --chart-4: #64748b;
+  --chart-5: #94a3b8;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #16191c;
+  --sidebar-primary: #0d8580;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ebeff0;
+  --sidebar-accent-foreground: #16191c;
+  --sidebar-border: #e2e6e8;
+  --sidebar-ring: #0d8580;
+
   color-scheme: light;
 }
 
 /* Dimmed charcoal dark theme: soft contrast, layered surfaces, no pure black. */
 .dark {
   --background: #1d1e23;
-  --surface: #25262c;
-  --surface-2: #2d2f36;
-  --surface-3: #373941;
   --foreground: #ededf0;
-  --muted: #a3a5ae;
-  --subtle: #7b7e88;
+  --card: #25262c;
+  --card-foreground: #ededf0;
+  --popover: #282a30;
+  --popover-foreground: #ededf0;
+  --primary: #2bb8a9;
+  --primary-foreground: #04201d;
+  --secondary: #2f3138;
+  --secondary-foreground: #ededf0;
+  --muted: #2d2f36;
+  --muted-foreground: #a3a6ae;
+  --accent: #34363e;
+  --accent-foreground: #ededf0;
+  --destructive: #f87171;
   --border: #35373f;
-  --border-strong: #464953;
-  --primary: #ededf0;
-  --primary-foreground: #1d1e23;
-  --accent: #a194ff;
-  --accent-soft: #34305a;
-  --accent-foreground: #c9c1ff;
-  --danger: #f87171;
-  --danger-soft: #3d2328;
+  --input: #3d4048;
+  --ring: #2bb8a9;
+
+  --primary-soft: #173a39;
+  --primary-soft-foreground: #7fe2d5;
+  --subtle: #7b7e88;
+  --border-strong: #4a4d57;
   --success: #4ade80;
   --canvas: #18191d;
   --canvas-dot: #2c2e35;
   --shadow-color: 0 0 0;
+
+  --chart-1: #2bb8a9;
+  --chart-2: #7fe2d5;
+  --chart-3: #22d3ee;
+  --chart-4: #94a3b8;
+  --chart-5: #64748b;
+
+  --sidebar: #25262c;
+  --sidebar-foreground: #ededf0;
+  --sidebar-primary: #2bb8a9;
+  --sidebar-primary-foreground: #04201d;
+  --sidebar-accent: #34363e;
+  --sidebar-accent-foreground: #ededf0;
+  --sidebar-border: #35373f;
+  --sidebar-ring: #2bb8a9;
+
   color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-surface-3: var(--surface-3);
   --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-subtle: var(--subtle);
-  --color-border: var(--border);
-  --color-border-strong: var(--border-strong);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
-  --color-accent-soft: var(--accent-soft);
   --color-accent-foreground: var(--accent-foreground);
-  --color-danger: var(--danger);
-  --color-danger-soft: var(--danger-soft);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-foreground: var(--primary-soft-foreground);
+  --color-subtle: var(--subtle);
+  --color-border-strong: var(--border-strong);
   --color-success: var(--success);
   --color-canvas: var(--canvas);
 
-  --font-sans: 'Geist', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: var(--font-sans);
 
   --shadow-xs: 0 1px 2px rgb(var(--shadow-color) / 0.05);
   --shadow-sm: 0 1px 2px rgb(var(--shadow-color) / 0.06), 0 1px 3px rgb(var(--shadow-color) / 0.08);
@@ -86,26 +167,13 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  --animate-fade-in: fade-in 0.4s var(--ease-out-expo) both;
   --animate-fade-up: fade-up 0.6s var(--ease-out-expo) both;
-  --animate-scale-in: scale-in 0.25s var(--ease-out-expo) both;
   --animate-float: float 6s ease-in-out infinite;
 
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-  }
   @keyframes fade-up {
     from {
       opacity: 0;
       transform: translateY(12px);
-    }
-  }
-  @keyframes scale-in {
-    from {
-      opacity: 0;
-      transform: scale(0.96);
     }
   }
   @keyframes float {
@@ -120,33 +188,30 @@
 }
 
 @layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
   html {
     -webkit-tap-highlight-color: transparent;
     text-size-adjust: 100%;
+    @apply font-sans;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-feature-settings: 'ss01', 'cv11';
+    @apply bg-background text-foreground antialiased;
     overscroll-behavior-y: none;
   }
   ::selection {
-    background: color-mix(in srgb, var(--accent) 25%, transparent);
+    background: color-mix(in srgb, var(--primary) 25%, transparent);
   }
-  :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-  button,
-  [role='button'] {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
     cursor: pointer;
   }
-  button:disabled {
-    cursor: not-allowed;
-  }
+  /* 16px on phones avoids iOS zooming into focused fields */
   input,
   textarea,
   select {
-    font-size: 16px; /* avoid iOS zoom on focus */
+    font-size: 16px;
   }
   @media (min-width: 768px) {
     input,
@@ -181,117 +246,22 @@
   }
 }
 
-@keyframes fade-out {
-  to {
-    opacity: 0;
-  }
-}
-@keyframes sheet-in {
-  from {
-    transform: translateY(100%);
-  }
-}
-@keyframes sheet-out {
-  to {
-    transform: translateY(100%);
-  }
-}
-@keyframes dialog-in {
-  from {
-    opacity: 0;
-    transform: scale(0.96) translateY(6px);
-  }
-}
-@keyframes dialog-out {
-  to {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-}
-
 /* ---------------------------------------------------------------------------
-   View transitions
+   Theme switching — briefly animate colors when toggling light/dark.
    --------------------------------------------------------------------------- */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 260ms;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-}
-::view-transition-group(resume-sheet) {
-  animation-duration: 380ms;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-}
-::view-transition-old(resume-sheet) {
-  animation: 220ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
-}
-::view-transition-new(resume-sheet) {
-  animation: 380ms cubic-bezier(0.16, 1, 0.3, 1) both vt-fade-in-up;
-}
-@keyframes vt-fade-out {
-  to {
-    opacity: 0;
-    transform: scale(0.985);
-  }
-}
-@keyframes vt-fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.99);
-  }
-}
-/* Template gallery filtering */
-::view-transition-group(.tpl-card),
-::view-transition-group(tpl-filter-pill) {
-  animation-duration: 420ms;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-}
-::view-transition-old(.tpl-card):only-child {
-  animation: 200ms ease-in both vt-card-out;
-}
-::view-transition-new(.tpl-card):only-child {
-  animation: 380ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both vt-card-in;
-}
-@keyframes vt-card-out {
-  to {
-    opacity: 0;
-    transform: scale(0.94);
-  }
-}
-@keyframes vt-card-in {
-  from {
-    opacity: 0;
-    transform: scale(0.94);
-  }
-}
-
-@keyframes vt-page-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-}
-@keyframes vt-page-out {
-  to {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-}
-::view-transition-group(.page) {
-  animation-duration: 340ms;
-}
-::view-transition-new(.page) {
-  animation: 340ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both vt-page-in;
-}
-::view-transition-old(.page) {
-  animation: 160ms ease-in both vt-page-out;
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition:
+    background-color 260ms ease,
+    border-color 260ms ease,
+    color 260ms ease,
+    fill 260ms ease,
+    box-shadow 260ms ease !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation: none !important;
-  }
   *,
   *::before,
   *::after {
@@ -300,7 +270,6 @@
     transition-duration: 0.01ms !important;
   }
 }
-
 /* ---------------------------------------------------------------------------
    Printing — only the resume is printed, edge to edge.
    --------------------------------------------------------------------------- */

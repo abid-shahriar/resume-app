@@ -1,7 +1,7 @@
 import { memo, useEffect, type CSSProperties, type Ref } from 'react'
 import { fontStack, loadFonts } from '@/lib/fonts'
 import type { Design, Resume } from '@/lib/types'
-import { getTemplate } from './registry'
+import { resolveTemplate } from './registry'
 import {
   Contacts,
   FlowSections,
@@ -77,15 +77,18 @@ function SwissHeader() {
 
 /* ---------------------------------- layouts --------------------------------- */
 
-function ClassicLayout() {
+/** Single-column layouts (classic, timeline, Swiss labels) with any single-column header style. */
+function FlowLayout() {
   const { resume, template } = useResumeCtx()
   const sections = visibleSections(resume)
+  const h = template.header
   return (
     <>
-      {template.header === 'banner' && <StandardHeader className="rs-header-banner" />}
+      {h === 'banner' && <StandardHeader className="rs-header-banner" />}
       <div className="rs-content">
-        {template.header === 'split' ? <SplitHeader /> : template.header !== 'banner' && <StandardHeader />}
-        <FlowSections sections={sections} />
+        {h === 'split' ? <SplitHeader /> : h !== 'banner' && (template.layout === 'swiss' ? <SwissHeader /> : <StandardHeader />)}
+        {/* Side-by-side list rows only suit the plain flow (timeline/labels indent their content) */}
+        {template.layout === 'classic' ? <FlowSections sections={sections} /> : <Sections sections={sections} />}
       </div>
     </>
   )
@@ -114,31 +117,11 @@ function SidebarLayout() {
   )
 }
 
-function TimelineLayout() {
-  const { resume } = useResumeCtx()
-  return (
-    <div className="rs-content">
-      <StandardHeader />
-      <Sections sections={visibleSections(resume)} />
-    </div>
-  )
-}
-
-function SwissLayout() {
-  const { resume } = useResumeCtx()
-  return (
-    <div className="rs-content">
-      <SwissHeader />
-      <Sections sections={visibleSections(resume)} />
-    </div>
-  )
-}
-
 const LAYOUTS = {
-  classic: ClassicLayout,
+  classic: FlowLayout,
+  timeline: FlowLayout,
+  swiss: FlowLayout,
   sidebar: SidebarLayout,
-  timeline: TimelineLayout,
-  swiss: SwissLayout,
 }
 
 /* --------------------------------- document --------------------------------- */
@@ -171,9 +154,11 @@ export interface ResumeDocumentProps {
 }
 
 export const ResumeDocument = memo(function ResumeDocument({ resume, pages = 1, innerRef, className }: ResumeDocumentProps) {
-  const template = getTemplate(resume.templateId)
+  const template = resolveTemplate(resume)
   const design = resume.design
   const Layout = LAYOUTS[template.layout]
+  const dividers = template.dividers ?? template.layout === 'swiss'
+  const columnDivider = template.columnDivider ?? design.sidebarTone === 'plain'
 
   useEffect(() => {
     loadFonts([design.headingFont, design.bodyFont])
@@ -192,6 +177,9 @@ export const ResumeDocument = memo(function ResumeDocument({ resume, pages = 1, 
         data-hcase={design.headingUppercase ? 'upper' : 'normal'}
         data-halign={design.headingAlign}
         data-ul={design.underlineLinks ? 'on' : 'off'}
+        data-dividers={dividers ? 'on' : 'off'}
+        data-hdiv={template.headerDivider ? 'on' : 'off'}
+        data-coldiv={template.layout === 'sidebar' && columnDivider ? 'on' : 'off'}
         style={{ ...designVars(design), '--pages': pages } as CSSProperties}
       >
         <div className="rs-page-bg" aria-hidden />

@@ -1,5 +1,6 @@
-import { Field, Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/controls'
+import { Field } from '@/components/kit'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { SECTION_CONFIG } from '@/lib/sections'
 import type { SectionItem, SectionType } from '@/lib/types'
 import { KeywordsInput, LevelPicker, RichTextEditor } from './fields'
@@ -61,8 +62,10 @@ export function ItemEditor({
             )}
           </Field>
           <label className="flex cursor-pointer items-center gap-2.5 sm:col-span-2">
-            <Switch checked={item.current} onCheckedChange={(v) => onChange({ current: v })} aria-label="Currently ongoing" />
-            <span className="text-[13px] font-medium text-foreground/80">I currently {type === 'education' ? 'study' : 'work'} here</span>
+            <Switch checked={item.current} onCheckedChange={(v) => onChange({ current: v })} />
+            <span className="text-[13px] font-medium text-foreground/80">
+              {type === 'education' ? 'I currently study here' : type === 'experience' || type === 'volunteer' ? 'I currently work here' : 'Ongoing'}
+            </span>
           </label>
         </>
       )}

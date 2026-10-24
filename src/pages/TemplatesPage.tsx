@@ -1,16 +1,17 @@
-import { ArrowRight, Check } from 'lucide-react'
-import { useMemo, useState, type CSSProperties } from 'react'
-import { useNavigate } from 'react-router'
+import { ArrowRight, Check, WandSparkles } from 'lucide-react'
+import { stagger, useAnimate } from 'motion/react'
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { ResumeThumb } from '@/components/ResumePreview'
 import { SiteFooter, SiteHeader } from '@/components/site'
 import { Button } from '@/components/ui/button'
-import { SwitchRow } from '@/components/ui/controls'
-import { Dialog } from '@/components/ui/dialog'
-import { withViewTransition } from '@/lib/transitions'
+import { ResponsiveDialog, SwitchRow } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import { useResumeStore } from '@/store/resumes'
 import { templatePreview } from '@/templates/previews'
-import { TEMPLATES, type TemplateDef } from '@/templates/registry'
+import { CUSTOM_TEMPLATE_ID, getTemplate, TEMPLATE_MAP, TEMPLATES, type TemplateDef } from '@/templates/registry'
+
+const CUSTOM_DEF = getTemplate(CUSTOM_TEMPLATE_ID)
 
 const FILTERS = ['All', 'Professional', 'Modern', 'Creative', 'Minimal', 'ATS-friendly', 'Two-column', 'Photo'] as const
 type Filter = (typeof FILTERS)[number]
@@ -31,19 +32,31 @@ function matches(t: TemplateDef, f: Filter) {
   return t.category === f
 }
 
-export function TemplateCard({ t, onSelect, active, eager }: { t: TemplateDef; onSelect: () => void; active?: boolean; eager?: boolean }) {
+export const TemplateCard = memo(function TemplateCard({
+  t,
+  onSelect,
+  active,
+  eager,
+  badge,
+}: {
+  t: TemplateDef
+  onSelect: (t: TemplateDef) => void
+  active?: boolean
+  eager?: boolean
+  badge?: string
+}) {
   const preview = templatePreview(t.id)
   return (
     <button
       type="button"
-      onClick={onSelect}
+      onClick={() => onSelect(t)}
       className="group flex w-full flex-col text-left outline-none"
       aria-label={`Preview ${t.name} template`}
     >
       <div
         className={cn(
-          'relative overflow-hidden rounded-xl border bg-white shadow-sm transition-[box-shadow,transform,border-color] duration-300 ease-[var(--ease-out-expo)] group-hover:-translate-y-1 group-hover:shadow-lg group-focus-visible:ring-4 group-focus-visible:ring-accent/30',
-          active ? 'border-accent ring-2 ring-accent' : 'border-border',
+          'relative overflow-hidden rounded-xl border bg-white shadow-sm transition-[box-shadow,transform,border-color] duration-300 ease-[var(--ease-out-expo)] group-hover:-translate-y-1 group-hover:shadow-lg group-focus-visible:ring-4 group-focus-visible:ring-primary/30',
+          active ? 'border-primary ring-2 ring-primary' : 'border-border',
         )}
       >
         <ResumeThumb resume={preview} eager={eager} />
@@ -53,8 +66,13 @@ export function TemplateCard({ t, onSelect, active, eager }: { t: TemplateDef; o
           </span>
         </div>
         {active && (
-          <span className="absolute right-2 top-2 grid size-6 place-items-center rounded-full bg-accent text-white shadow-md">
+          <span className="absolute right-2 top-2 grid size-6 place-items-center rounded-full bg-primary text-primary-foreground shadow-md">
             <Check className="size-3.5" strokeWidth={3} />
+          </span>
+        )}
+        {badge && (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground shadow-md">
+            <WandSparkles className="size-3" /> {badge}
           </span>
         )}
       </div>
@@ -62,25 +80,109 @@ export function TemplateCard({ t, onSelect, active, eager }: { t: TemplateDef; o
         <span className="font-medium">{t.name}</span>
         <span className="flex items-center gap-1.5">
           <span className="size-2.5 rounded-full" style={{ background: t.design.accent }} />
-          <span className="text-xs text-muted">{t.category}</span>
+          <span className="text-xs text-muted-foreground">{t.category}</span>
         </span>
       </div>
     </button>
   )
+})
+
+/** Filter pills with a sliding highlight positioned from the active pill's box (scroll-safe, no layout projection). */
+function FilterPills({ value, onChange }: { value: Filter; onChange: (f: Filter) => void }) {
+  const rowRef = useRef<HTMLDivElement>(null)
+  const [box, setBox] = useState<{ left: number; width: number } | null>(null)
+
+  useLayoutEffect(() => {
+    const row = rowRef.current
+    if (!row) return
+    const measure = () => {
+      const el = row.querySelector<HTMLElement>('[aria-pressed="true"]')
+      if (el) setBox({ left: el.offsetLeft, width: el.offsetWidth })
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(row)
+    // Re-measure once web fonts settle (pill widths depend on them)
+    void document.fonts?.ready.then(measure)
+    return () => ro.disconnect()
+  }, [value])
+
+  return (
+    <div className="no-scrollbar -mx-4 mt-8 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+      <div ref={rowRef} className="relative flex w-max gap-2 sm:w-auto sm:flex-wrap">
+        {box && (
+          <span
+            aria-hidden
+            className="absolute top-0 h-9 rounded-full bg-primary transition-[transform,width] duration-[400ms] ease-[var(--ease-out-expo)]"
+            style={{ width: box.width, transform: `translateX(${box.left}px)` }}
+          />
+        )}
+        {FILTERS.map((f) => {
+          const active = value === f
+          return (
+            <button
+              key={f}
+              type="button"
+              aria-pressed={active}
+              onClick={(e) => {
+                if (active) return
+                onChange(f)
+                e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+              }}
+              className={cn(
+                'relative h-9 shrink-0 rounded-full px-4 text-[13px] font-medium transition-colors duration-300',
+                active ? 'text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground',
+                !box && active && 'bg-primary',
+              )}
+            >
+              {f}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export default function TemplatesPage() {
+  const [params] = useSearchParams()
   const [filter, setFilter] = useState<Filter>('All')
-  const [selected, setSelected] = useState<TemplateDef | null>(null)
+  const [selected, setSelected] = useState<TemplateDef | null>(() => {
+    const t = params.get('t') ?? ''
+    return t === CUSTOM_TEMPLATE_ID ? CUSTOM_DEF : (TEMPLATE_MAP[t] ?? null)
+  })
   const [withSample, setWithSample] = useState(true)
   const createResume = useResumeStore((s) => s.createResume)
   const navigate = useNavigate()
   const visibleIds = useMemo(() => new Set(TEMPLATES.filter((t) => matches(t, filter)).map((t) => t.id)), [filter])
+  const [scope, animate] = useAnimate<HTMLDivElement>()
+  const firstRender = useRef(true)
+
+  // Cards stay mounted (only hidden), so thumbnails never re-render. After a
+  // filter change, the visible set eases in with a short stagger.
+  useLayoutEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false
+      return
+    }
+    const cards = Array.from(scope.current?.querySelectorAll<HTMLElement>('[data-card]:not([hidden])') ?? [])
+    if (!cards.length || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    cards.forEach((c) => (c.style.opacity = '0'))
+    const controls = animate(
+      cards,
+      { opacity: [0, 1], y: [14, 0] },
+      { duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: stagger(0.035, { startDelay: 0.02 }) },
+    )
+    return () => controls.stop()
+  }, [filter, animate, scope])
+
+  const select = useCallback((t: TemplateDef) => setSelected(t), [])
 
   const use = (t: TemplateDef) => {
     const id = createResume({ templateId: t.id, sample: withSample })
     setSelected(null)
-    navigate(`/edit/${id}`)
+    // Custom layouts open on the Design tab, where the layout builder lives
+    navigate(t.id === CUSTOM_TEMPLATE_ID ? `/edit/${id}?tab=design` : `/edit/${id}`)
   }
 
   return (
@@ -88,55 +190,34 @@ export default function TemplatesPage() {
       <SiteHeader />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
         <div className="max-w-2xl animate-fade-up">
-          <p className="text-sm font-medium text-accent-foreground">{TEMPLATES.length} templates</p>
+          <p className="text-sm font-medium text-primary-soft-foreground">{TEMPLATES.length} templates</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">Choose a template to start</h1>
-          <p className="mt-3 text-muted text-balance">
+          <p className="mt-3 text-muted-foreground text-balance">
             Every template is fully customizable. Switch anytime without losing a word of your content.
           </p>
         </div>
 
-        <div className="no-scrollbar -mx-4 mt-8 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
-          {FILTERS.map((f) => (
-            <button
-              key={f}
-              type="button"
-              aria-pressed={filter === f}
-              onClick={() => filter !== f && withViewTransition(() => setFilter(f))}
-              className={cn(
-                'relative h-9 shrink-0 rounded-full px-4 text-[13px] font-medium transition-colors',
-                filter === f ? 'text-primary-foreground' : 'bg-surface-2 text-muted hover:text-foreground',
-              )}
-            >
-              {filter === f && (
-                <span className="absolute inset-0 rounded-full bg-primary" style={{ viewTransitionName: 'tpl-filter-pill' }} />
-              )}
-              <span className="relative">{f}</span>
-            </button>
-          ))}
-        </div>
+        <FilterPills value={filter} onChange={setFilter} />
 
-        {/* All cards stay mounted (hidden when filtered out) so thumbnails never re-render;
-            the reflow is animated with a View Transition. */}
-        <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-6 md:grid-cols-3 lg:grid-cols-4">
+        <div ref={scope} className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-6 md:grid-cols-3 lg:grid-cols-4">
+          <div data-card hidden={filter !== 'All'}>
+            <TemplateCard t={CUSTOM_DEF} onSelect={select} eager badge="Build your own" />
+          </div>
           {TEMPLATES.map((t) => (
-            <div
-              key={t.id}
-              hidden={!visibleIds.has(t.id)}
-              style={{ viewTransitionName: `tpl-${t.id}`, viewTransitionClass: 'tpl-card' } as CSSProperties}
-            >
-              <TemplateCard t={t} onSelect={() => setSelected(t)} eager />
+            <div key={t.id} data-card hidden={!visibleIds.has(t.id)}>
+              <TemplateCard t={t} onSelect={select} eager />
             </div>
           ))}
         </div>
-        {visibleIds.size === 0 && <p className="py-16 text-center text-muted">No templates match this filter.</p>}
+        {visibleIds.size === 0 && <p className="py-16 text-center text-muted-foreground">No templates match this filter.</p>}
       </main>
       <SiteFooter />
 
-      <Dialog
+      <ResponsiveDialog
         open={!!selected}
         onOpenChange={(o) => !o && setSelected(null)}
         size="xl"
-        title={selected ? `${selected.name} template` : ''}
+        title={selected ? (selected.id === CUSTOM_TEMPLATE_ID ? 'Custom layout' : `${selected.name} template`) : ''}
         description={selected?.description}
       >
         {selected && (
@@ -148,30 +229,30 @@ export default function TemplatesPage() {
             </div>
             <div className="flex flex-col gap-5 md:pt-2">
               <div className="flex flex-wrap gap-1.5">
-                <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent-foreground">
+                <span className="rounded-full bg-primary-soft px-2.5 py-1 text-xs font-medium text-primary-soft-foreground">
                   {selected.category}
                 </span>
                 {templateTags(selected).map((tag) => (
-                  <span key={tag} className="rounded-full bg-surface-2 px-2.5 py-1 text-xs font-medium text-muted">
+                  <span key={tag} className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                     {tag}
                   </span>
                 ))}
               </div>
               <dl className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <dt className="text-xs text-muted">Headings</dt>
+                  <dt className="text-xs text-muted-foreground">Headings</dt>
                   <dd className="font-medium">{selected.design.headingFont}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-muted">Body</dt>
+                  <dt className="text-xs text-muted-foreground">Body</dt>
                   <dd className="font-medium">{selected.design.bodyFont}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-muted">Layout</dt>
+                  <dt className="text-xs text-muted-foreground">Layout</dt>
                   <dd className="font-medium capitalize">{selected.layout === 'sidebar' ? 'Two columns' : selected.layout}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-muted">Accent</dt>
+                  <dt className="text-xs text-muted-foreground">Accent</dt>
                   <dd className="flex items-center gap-1.5 font-medium">
                     <span className="size-3 rounded-full" style={{ background: selected.design.accent }} />
                     {selected.design.accent}
@@ -186,13 +267,13 @@ export default function TemplatesPage() {
                   onCheckedChange={setWithSample}
                 />
               </div>
-              <Button size="lg" onClick={() => use(selected)} className="w-full">
-                Use this template <ArrowRight />
+              <Button size="xl" onClick={() => use(selected)} className="w-full">
+                {selected.id === CUSTOM_TEMPLATE_ID ? 'Start building' : 'Use this template'} <ArrowRight />
               </Button>
             </div>
           </div>
         )}
-      </Dialog>
+      </ResponsiveDialog>
     </div>
   )
 }

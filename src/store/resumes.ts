@@ -6,7 +6,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { BASE_DESIGN, blankResume, sampleResume } from '@/lib/defaults'
 import type { Resume } from '@/lib/types'
 import { uid } from '@/lib/utils'
-import { DEFAULT_TEMPLATE_ID, templateDesign } from '@/templates/registry'
+import { DEFAULT_CUSTOM_LAYOUT, DEFAULT_TEMPLATE_ID, templateDesign } from '@/templates/registry'
 import { debouncedStorage } from './storage'
 
 interface ResumeState {
@@ -47,6 +47,7 @@ export const useResumeStore = create<ResumeState>()(
             updatedAt: now,
             ...content,
             design: templateDesign(templateId),
+            customLayout: { ...DEFAULT_CUSTOM_LAYOUT },
           }
           set((s) => ({ resumes: { ...s.resumes, [id]: resume } }))
           return id
@@ -104,7 +105,12 @@ export const useResumeStore = create<ResumeState>()(
           const resumes: Record<string, Resume> = {}
           for (const [key, r] of Object.entries(saved)) {
             if (r && typeof r === 'object' && r.basics && Array.isArray(r.sections)) {
-              resumes[key] = { ...r, design: { ...BASE_DESIGN, ...r.design } }
+              resumes[key] = {
+                ...r,
+                basics: { ...r.basics, photoSource: r.basics.photoSource ?? '', photoCrop: r.basics.photoCrop ?? null },
+                design: { ...BASE_DESIGN, ...r.design },
+                customLayout: { ...DEFAULT_CUSTOM_LAYOUT, ...r.customLayout },
+              }
             }
           }
           return { ...current, resumes }
@@ -113,14 +119,29 @@ export const useResumeStore = create<ResumeState>()(
     ),
     {
       limit: 150,
-      partialize: (s) => ({ resumes: s.resumes }),
+      // `s` can be undefined during persist's synchronous first hydration
+      partialize: (s) => ({ resumes: s?.resumes }),
       equality: (a, b) => a.resumes === b.resumes,
       handleSet: (handleSet) => leadingDebounce(handleSet, 600),
     },
   ),
 )
 
-export const useTemporal = () => useResumeStore.temporal
+/**
+ * zundo applies undo/redo through zustand's raw `set`, which bypasses the
+ * persist middleware. A no-op setState afterwards goes through persist and
+ * writes the restored state to localStorage (zundo's equality check keeps it
+ * out of the history).
+ */
+export function undo() {
+  useResumeStore.temporal.getState().undo()
+  useResumeStore.setState({})
+}
+
+export function redo() {
+  useResumeStore.temporal.getState().redo()
+  useResumeStore.setState({})
+}
 
 export function useResume(id: string | undefined) {
   return useResumeStore((s) => (id ? s.resumes[id] : undefined))

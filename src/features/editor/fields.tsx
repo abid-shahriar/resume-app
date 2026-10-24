@@ -1,9 +1,12 @@
 import { Bold, Italic, Link2, List, ListOrdered, X } from 'lucide-react'
-import { useId, useRef, useState, type KeyboardEvent } from 'react'
-import { Tooltip } from '@/components/ui/controls'
-import { fieldBase, Textarea } from '@/components/ui/input'
+import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { Tip } from '@/components/kit'
 import { LEVEL_LABELS } from '@/lib/sections'
 import { cn } from '@/lib/utils'
+
+/** Shared look for composite fields, matching shadcn's Input. */
+const fieldShell =
+  'rounded-lg border border-input bg-transparent transition-[border-color,box-shadow] dark:bg-input/30 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50'
 
 /* ------------------------------ text editing ------------------------------- */
 
@@ -97,7 +100,16 @@ export function RichTextEditor({
     if (el) fn(el)
   }
 
+  // Auto-grow (works everywhere, unlike `field-sizing: content`)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight + 2}px`
+  }, [value])
+
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing) return
     const el = e.currentTarget
     const mod = e.metaKey || e.ctrlKey
     if (mod && e.key.toLowerCase() === 'b') {
@@ -143,24 +155,24 @@ export function RichTextEditor({
   ]
 
   return (
-    <div className="group/rte rounded-lg border border-border bg-surface shadow-xs transition-[border-color,box-shadow] focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/15 hover:border-border-strong">
+    <div className={cn(fieldShell, 'overflow-hidden')}>
       <div className="flex items-center gap-0.5 border-b border-border px-1.5 py-1">
         {tools.map((t) => (
-          <Tooltip key={t.label} content={t.kbd ? `${t.label} (${t.kbd})` : t.label} side="top">
+          <Tip key={t.label} content={t.kbd ? `${t.label} (${t.kbd})` : t.label} side="top">
             <button
               type="button"
               aria-label={t.label}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => run(t.fn)}
-              className="grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-foreground md:size-7"
+              className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:size-7"
             >
               <t.icon className="size-4" />
             </button>
-          </Tooltip>
+          </Tip>
         ))}
         <span className="ml-auto hidden pr-1.5 text-[11px] text-subtle sm:inline">Markdown supported</span>
       </div>
-      <Textarea
+      <textarea
         ref={ref}
         id={id}
         value={value}
@@ -168,7 +180,7 @@ export function RichTextEditor({
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         rows={minRows}
-        className="min-h-0 rounded-none border-0 bg-transparent shadow-none hover:border-0 focus:ring-0"
+        className="block w-full resize-none bg-transparent px-3 py-2 leading-relaxed outline-none placeholder:text-muted-foreground md:text-sm"
       />
     </div>
   )
@@ -199,11 +211,11 @@ export function KeywordsInput({
   }
   return (
     <div
-      className={cn(fieldBase, 'flex min-h-10 flex-wrap items-center gap-1.5 px-2 py-1.5 focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/15 md:min-h-9')}
+      className={cn(fieldShell, 'flex min-h-10 w-full cursor-text flex-wrap items-center gap-1.5 px-2 py-1.5 md:min-h-9')}
       onClick={(e) => (e.currentTarget.querySelector('input') as HTMLInputElement | null)?.focus()}
     >
       {value.map((k, i) => (
-        <span key={`${k}-${i}`} className="inline-flex h-7 animate-scale-in items-center gap-1 rounded-md bg-surface-2 pl-2 pr-1 text-[13px] font-medium md:h-6">
+        <span key={`${k}-${i}`} className="inline-flex h-7 items-center gap-1 rounded-md bg-muted pl-2 pr-1 text-[13px] font-medium animate-in fade-in-0 zoom-in-95 md:h-6">
           {k}
           <button
             type="button"
@@ -212,7 +224,7 @@ export function KeywordsInput({
               e.stopPropagation()
               onChange(value.filter((_, j) => j !== i))
             }}
-            className="grid size-5 place-items-center rounded text-muted hover:bg-surface-3 hover:text-foreground"
+            className="grid size-5 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <X className="size-3" />
           </button>
@@ -220,6 +232,7 @@ export function KeywordsInput({
       ))}
       <input
         id={id}
+        data-native-undo
         value={draft}
         onChange={(e) => {
           const v = e.target.value
@@ -227,6 +240,7 @@ export function KeywordsInput({
           else setDraft(v)
         }}
         onKeyDown={(e) => {
+          if (e.nativeEvent.isComposing) return
           if (e.key === 'Enter') {
             e.preventDefault()
             add(draft)
@@ -266,13 +280,13 @@ export function LevelPicker({ value, onChange }: { value: number; onChange: (v: 
             onClick={() => onChange(value === n ? 0 : n)}
             className={cn(
               'h-8 flex-1 rounded-md transition-all duration-200 md:h-7',
-              n <= value ? 'bg-accent' : 'bg-surface-3 hover:bg-border-strong',
+              n <= value ? 'bg-primary' : 'bg-accent hover:bg-border-strong',
             )}
             style={{ transitionDelay: `${n * 15}ms` }}
           />
         ))}
       </div>
-      <span id={id} className="w-24 shrink-0 text-right text-xs font-medium text-muted">
+      <span id={id} className="w-24 shrink-0 text-right text-xs font-medium text-muted-foreground">
         {value ? LEVEL_LABELS[value] : 'Not set'}
       </span>
     </div>

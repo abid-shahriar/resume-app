@@ -18,7 +18,7 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler|react-router)[\\/]/ },
-            { name: 'ui', test: /node_modules[\\/](radix-ui|@radix-ui|motion|motion-dom|motion-utils|framer-motion|sonner)[\\/]/ },
+            { name: 'ui', test: /node_modules[\\/](@base-ui|@floating-ui|motion|motion-dom|motion-utils|framer-motion|sonner)[\\/]/ },
             { name: 'dnd', test: /node_modules[\\/]@dnd-kit[\\/]/ },
           ],
         },

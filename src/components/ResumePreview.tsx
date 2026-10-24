@@ -1,21 +1,22 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { motion } from 'motion/react'
+import { memo, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Resume } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { PAGE_SIZES_PX, ResumeDocument } from '@/templates/ResumeDocument'
 
-function useElementSize<T extends HTMLElement>() {
+function useElementWidth<T extends HTMLElement>() {
   const ref = useRef<T | null>(null)
-  const [size, setSize] = useState({ width: 0, height: 0 })
+  const [width, setWidth] = useState(0)
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    const update = () => setSize({ width: el.clientWidth, height: el.clientHeight })
+    const update = () => setWidth(el.clientWidth)
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  return [ref, size] as const
+  return [ref, width] as const
 }
 
 export type Zoom = 'fit' | number
@@ -30,7 +31,6 @@ export const ResumePreview = memo(function ResumePreview({
   maxFitScale = 1.15,
   onLayout,
   className,
-  sheetName,
 }: {
   resume: Resume
   zoom?: Zoom
@@ -38,32 +38,28 @@ export const ResumePreview = memo(function ResumePreview({
   maxFitScale?: number
   onLayout?: (info: { pages: number; scale: number }) => void
   className?: string
-  /** CSS view-transition-name for the sheet */
-  sheetName?: string
 }) {
-  // Note: intentionally not using useDeferredValue here; deferred (transition)
-  // updates would activate the route-level <ViewTransition> on every keystroke.
-  const deferred = resume
-  const [containerRef, container] = useElementSize<HTMLDivElement>()
-  const innerRef = useRef<HTMLDivElement | null>(null)
+  // Keeps typing responsive on slow devices: the preview may lag a frame behind the inputs.
+  const deferred = useDeferredValue(resume)
+  const [containerRef, containerWidth] = useElementWidth<HTMLDivElement>()
+  // Callback ref (state) so the size observer re-attaches when the document remounts on template change
+  const [inner, setInner] = useState<HTMLDivElement | null>(null)
   const [contentHeight, setContentHeight] = useState(0)
 
   const page = PAGE_SIZES_PX[deferred.design.pageSize] ?? PAGE_SIZES_PX.a4
-  const available = Math.max(0, container.width - padding * 2)
+  const available = Math.max(0, containerWidth - padding * 2)
   const fitScale = available > 0 ? Math.min(maxFitScale, available / page.width) : 0
   const scale = zoom === 'fit' ? fitScale : zoom
   const pages = Math.max(1, Math.ceil((contentHeight - 1) / page.height))
-  const ready = scale > 0
 
   useLayoutEffect(() => {
-    const el = innerRef.current
-    if (!el) return
-    const update = () => setContentHeight(el.offsetHeight)
+    if (!inner) return
+    const update = () => setContentHeight(inner.offsetHeight)
     update()
     const ro = new ResizeObserver(update)
-    ro.observe(el)
+    ro.observe(inner)
     return () => ro.disconnect()
-  }, [ready])
+  }, [inner])
 
   useEffect(() => {
     if (scale > 0) onLayout?.({ pages, scale })
@@ -72,23 +68,20 @@ export const ResumePreview = memo(function ResumePreview({
   return (
     <div ref={containerRef} className={cn('relative w-full', className)}>
       {scale > 0 && (
-        <div
-          className="relative mx-auto"
-          style={{ width: page.width * scale, height: pages * page.height * scale, paddingTop: 0 }}
-        >
+        <div className="relative mx-auto" style={{ width: page.width * scale, height: pages * page.height * scale }}>
           <div
             className="absolute left-0 top-0 origin-top-left overflow-hidden bg-white shadow-[var(--shadow-paper)]"
-            style={
-              {
-                width: page.width,
-                height: pages * page.height,
-                transform: `scale(${scale})`,
-                borderRadius: 2 / scale,
-                viewTransitionName: sheetName,
-              } as CSSProperties
-            }
+            style={{ width: page.width, height: pages * page.height, transform: `scale(${scale})`, borderRadius: 2 / scale }}
           >
-            <ResumeDocument resume={deferred} pages={pages} innerRef={innerRef} />
+            {/* Re-keyed per template so switching templates fades the new design in */}
+            <motion.div
+              key={deferred.templateId}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <ResumeDocument resume={deferred} pages={pages} innerRef={setInner} />
+            </motion.div>
           </div>
           {Array.from({ length: pages - 1 }, (_, i) => (
             <div
@@ -97,8 +90,8 @@ export const ResumePreview = memo(function ResumePreview({
               style={{ top: (i + 1) * page.height * scale }}
               aria-hidden
             >
-              <div className="h-0 w-full border-t border-dashed border-accent/50" />
-              <span className="absolute right-0 top-0 -translate-y-1/2 translate-x-[calc(100%+8px)] whitespace-nowrap rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm max-[900px]:right-2 max-[900px]:translate-x-0">
+              <div className="h-0 w-full border-t border-dashed border-primary/50" />
+              <span className="absolute right-2 top-0 -translate-y-1/2 whitespace-nowrap rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground shadow-sm">
                 Page {i + 2}
               </span>
             </div>
@@ -108,6 +101,11 @@ export const ResumePreview = memo(function ResumePreview({
     </div>
   )
 })
+
+type IdleWindow = Window & {
+  requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number
+  cancelIdleCallback?: (id: number) => void
+}
 
 /**
  * Static, lazily rendered thumbnail of a resume (used in galleries and lists).
@@ -129,7 +127,7 @@ export const ResumeThumb = memo(function ResumeThumb({
 
   useEffect(() => {
     if (!eager || visible) return
-    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void }
+    const w = window as IdleWindow
     if (w.requestIdleCallback) {
       const id = w.requestIdleCallback(() => setVisible(true), { timeout: 2000 })
       return () => w.cancelIdleCallback?.(id)

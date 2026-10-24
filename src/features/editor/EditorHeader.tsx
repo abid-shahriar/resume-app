@@ -5,11 +5,9 @@ import { toast } from 'sonner'
 import { useStore } from 'zustand'
 import { Logo, ThemeToggle } from '@/components/site'
 import { Button } from '@/components/ui/button'
-import { Tooltip } from '@/components/ui/controls'
-import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, Tip } from '@/components/kit'
 import { exportResume } from '@/lib/io'
-import { cn } from '@/lib/utils'
-import { useResumeStore } from '@/store/resumes'
+import { redo, undo, useResumeStore } from '@/store/resumes'
 import { useEditor, useEditorSelect } from './context'
 import { useDownload } from './DownloadDialog'
 
@@ -19,37 +17,37 @@ const MOD = isMac ? '⌘' : 'Ctrl'
 function TitleInput() {
   const { update } = useEditor()
   const title = useEditorSelect((r) => r.title)
-  const [draft, setDraft] = useState(title)
-  const focused = useRef(false)
-  useEffect(() => {
-    if (!focused.current) setDraft(title)
-  }, [title])
+  const original = useRef(title)
 
-  const commit = () => {
-    focused.current = false
-    const t = draft.trim() || 'Untitled Resume'
-    setDraft(t)
-    if (t !== title) update((d) => void (d.title = t))
-  }
-
+  // Saved on every keystroke (so navigating away never loses it); blank names are fixed up on blur
   return (
     <input
-      value={draft}
+      value={title}
+      maxLength={120}
       onFocus={(e) => {
-        focused.current = true
+        original.current = title
         e.currentTarget.select()
       }}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
+      onChange={(e) => {
+        const v = e.target.value
+        update((d) => void (d.title = v))
+      }}
+      onBlur={() => {
+        // Read the store, not the render closure: Escape restores the title right before blurring
+        update((d) => {
+          if (!d.title.trim()) d.title = 'Untitled Resume'
+        })
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter') e.currentTarget.blur()
         if (e.key === 'Escape') {
-          setDraft(title)
+          const prev = original.current
+          update((d) => void (d.title = prev))
           e.currentTarget.blur()
         }
       }}
       aria-label="Resume name"
-      className="h-9 w-full min-w-0 max-w-[16rem] truncate rounded-lg border border-transparent bg-transparent px-2 font-medium outline-none transition-colors hover:bg-surface-2 focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/15 md:text-sm"
+      className="h-9 w-full min-w-0 max-w-[16rem] truncate rounded-lg border border-transparent bg-transparent px-2 font-medium outline-none transition-colors hover:bg-muted focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/15 md:text-sm"
     />
   )
 }
@@ -68,16 +66,16 @@ function SaveIndicator() {
     return () => clearTimeout(t)
   }, [updatedAt])
   return (
-    <Tooltip content="Changes are saved automatically in this browser">
-      <span className="hidden shrink-0 items-center gap-1.5 text-xs text-muted md:inline-flex">
+    <Tip content="Changes are saved automatically in this browser">
+      <span className="hidden shrink-0 items-center gap-1.5 text-xs text-muted-foreground md:inline-flex">
         {saving ? (
-          <span className="size-3 animate-spin rounded-full border-[1.5px] border-border-strong border-t-accent" />
+          <span className="size-3 animate-spin rounded-full border-[1.5px] border-border-strong border-t-primary" />
         ) : (
           <Check className="size-3.5 text-success" />
         )}
         {saving ? 'Saving…' : 'Saved'}
       </span>
-    </Tooltip>
+    </Tip>
   )
 }
 
@@ -88,31 +86,20 @@ export function EditorHeader() {
   const canUndo = useStore(temporal, (s) => s.pastStates.length > 0)
   const canRedo = useStore(temporal, (s) => s.futureStates.length > 0)
   const duplicate = useResumeStore((s) => s.duplicateResume)
-  const remove = useResumeStore((s) => s.deleteResume)
-  const restore = useResumeStore((s) => s.restoreResume)
   const download = useDownload()
 
   const getResume = () => useResumeStore.getState().resumes[id]
 
-  const onDelete = () => {
-    const snapshot = getResume()
-    navigate('/')
-    // Delete after navigating away so the editor never renders a missing resume
-    setTimeout(() => {
-      remove(id)
-      toast(`Deleted “${snapshot.title}”`, { action: { label: 'Undo', onClick: () => restore(snapshot) }, duration: 6000 })
-    }, 0)
-  }
+  // The home page performs the deletion (with an undo toast) once the editor has unmounted
+  const onDelete = () => navigate('/', { state: { deleteId: id } })
 
   return (
     <header className="z-30 flex h-14 shrink-0 items-center gap-1 border-b border-border bg-background/85 px-2 backdrop-blur-xl sm:gap-2 sm:px-3">
-      <Tooltip content="My resumes">
-        <Button asChild variant="subtle" size="icon-sm">
-          <Link to="/" aria-label="Back to my resumes">
-            <ChevronLeft />
-          </Link>
+      <Tip content="My resumes">
+        <Button render={<Link to="/" />} nativeButton={false} variant="subtle" size="icon-lg" aria-label="Back to my resumes">
+          <ChevronLeft />
         </Button>
-      </Tooltip>
+      </Tip>
       <Link to="/" className="hidden rounded-lg lg:block" aria-label="Vitae home">
         <Logo compact />
       </Link>
@@ -122,24 +109,22 @@ export function EditorHeader() {
         <SaveIndicator />
       </div>
       <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-        <Tooltip content={`Undo (${MOD}+Z)`}>
-          <Button variant="subtle" size="icon-sm" disabled={!canUndo} onClick={() => temporal.getState().undo()} aria-label="Undo">
+        <Tip content={`Undo (${MOD}+Z)`}>
+          <Button variant="subtle" size="icon-lg" disabled={!canUndo} onClick={undo} aria-label="Undo">
             <Undo2 />
           </Button>
-        </Tooltip>
-        <Tooltip content={`Redo (${MOD}+Shift+Z)`}>
-          <Button variant="subtle" size="icon-sm" disabled={!canRedo} onClick={() => temporal.getState().redo()} aria-label="Redo">
+        </Tip>
+        <Tip content={`Redo (${MOD}+Shift+Z)`}>
+          <Button variant="subtle" size="icon-lg" disabled={!canRedo} onClick={redo} aria-label="Redo">
             <Redo2 />
           </Button>
-        </Tooltip>
+        </Tip>
         <span className="hidden lg:block">
           <ThemeToggle />
         </span>
         <Menu>
-          <MenuTrigger asChild>
-            <Button variant="subtle" size="icon-sm" aria-label="More actions">
-              <Ellipsis />
-            </Button>
+          <MenuTrigger render={<Button variant="subtle" size="icon-lg" aria-label="More actions" />}>
+            <Ellipsis />
           </MenuTrigger>
           <MenuContent className="w-56">
             <MenuItem icon={<Printer />} shortcut={`${MOD}+P`} onSelect={() => download(getResume())}>
@@ -166,7 +151,7 @@ export function EditorHeader() {
             </MenuItem>
           </MenuContent>
         </Menu>
-        <Button onClick={() => download(getResume())} size="sm" className={cn('ml-1 h-9 px-3 sm:px-3.5')} aria-label="Download PDF">
+        <Button size="lg" onClick={() => download(getResume())} className="ml-1" aria-label="Download PDF">
           <Download />
           <span className="hidden sm:inline">Download PDF</span>
         </Button>

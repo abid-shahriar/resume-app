@@ -22,7 +22,11 @@ function getRoot() {
  * Prints (and therefore lets the user "Save as PDF") the given resume with
  * crisp, selectable vector text. Only the resume is visible in print.
  */
+let jobSeq = 0
+let titleBeforePrint: string | null = null
+
 export async function printResume(resume: Resume) {
+  const job = ++jobSeq
   const { headingFont, bodyFont, pageSize } = resume.design
   loadFonts([headingFont, bodyFont])
 
@@ -32,7 +36,8 @@ export async function printResume(resume: Resume) {
   document.getElementById('print-page-style')?.remove()
   document.head.appendChild(style)
 
-  const prevTitle = document.title
+  // The browser uses the document title as the default PDF file name
+  titleBeforePrint ??= document.title
   document.title = slugify(resume.basics.name || resume.title).replace(/-/g, '_') + '_Resume'
 
   flushSync(() => usePrintJob.setState({ resume }))
@@ -41,14 +46,17 @@ export async function printResume(resume: Resume) {
   const imgs = Array.from(getRoot().querySelectorAll('img'))
   await Promise.all(imgs.map((img) => (img.complete ? null : img.decode().catch(() => null))))
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+  if (job !== jobSeq) return // a newer print request superseded this one
 
   let cleaned = false
   const cleanup = () => {
     if (cleaned) return
     cleaned = true
-    document.title = prevTitle
-    usePrintJob.setState({ resume: null })
     window.removeEventListener('afterprint', cleanup)
+    if (job !== jobSeq) return // don't tear down a newer job
+    if (titleBeforePrint !== null) document.title = titleBeforePrint
+    titleBeforePrint = null
+    usePrintJob.setState({ resume: null })
   }
   window.addEventListener('afterprint', cleanup)
   try {

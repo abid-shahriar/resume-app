@@ -14,14 +14,13 @@ import { AnimatePresence, motion } from 'motion/react'
 import { memo, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Tooltip } from '@/components/ui/controls'
-import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, Tip } from '@/components/kit'
 import { createItem } from '@/lib/defaults'
 import { stripMarkdown } from '@/lib/markdown'
 import { itemLabel, SECTION_CONFIG } from '@/lib/sections'
 import type { Section, SectionItem } from '@/lib/types'
 import { arrayMove, cn, uid } from '@/lib/utils'
-import { getTemplate } from '@/templates/registry'
+import { resolveTemplate } from '@/templates/registry'
 import { useEditor, useEditorSelect } from './context'
 import { DragHandle, SortableList, useSortableItem } from './dnd'
 import { RichTextEditor } from './fields'
@@ -104,29 +103,27 @@ const ItemRow = memo(function ItemRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'rounded-lg border bg-surface transition-[box-shadow,border-color] duration-200',
-        isDragging ? 'border-accent shadow-lg' : open ? 'border-border-strong shadow-sm' : 'border-border',
+        'rounded-lg border bg-card transition-[box-shadow,border-color] duration-200',
+        isDragging ? 'border-primary shadow-lg' : open ? 'border-border-strong shadow-sm' : 'border-border',
         !item.visible && 'opacity-60',
       )}
     >
       <div className="flex items-center gap-1 py-1 pl-1 pr-1.5">
         <DragHandle {...handleProps} />
         <button type="button" onClick={onToggle} className="flex min-w-0 flex-1 flex-col items-start py-1.5 text-left" aria-expanded={open}>
-          <span className={cn('w-full truncate text-[13px] font-medium', !item.title.trim() && 'text-muted')}>
+          <span className={cn('w-full truncate text-[13px] font-medium', !item.title.trim() && 'text-muted-foreground')}>
             {itemLabel(item, section.type)}
           </span>
-          {summary && <span className="w-full truncate text-xs text-muted">{summary}</span>}
+          {summary && <span className="w-full truncate text-xs text-muted-foreground">{summary}</span>}
         </button>
-        <Tooltip content={item.visible ? 'Hide from resume' : 'Show on resume'}>
-          <Button variant="subtle" size="icon-xs" onClick={() => patch({ visible: !item.visible })} aria-label={item.visible ? 'Hide entry' : 'Show entry'}>
+        <Tip content={item.visible ? 'Hide from resume' : 'Show on resume'}>
+          <Button variant="subtle" size="icon-sm" onClick={() => patch({ visible: !item.visible })} aria-label={item.visible ? 'Hide entry' : 'Show entry'}>
             {item.visible ? <Eye /> : <EyeOff />}
           </Button>
-        </Tooltip>
+        </Tip>
         <Menu>
-          <MenuTrigger asChild>
-            <Button variant="subtle" size="icon-xs" aria-label="Entry actions">
-              <Ellipsis />
-            </Button>
+          <MenuTrigger render={<Button variant="subtle" size="icon-sm" aria-label="Entry actions" />}>
+            <Ellipsis />
           </MenuTrigger>
           <MenuContent>
             <MenuItem icon={<Copy />} onSelect={duplicate}>
@@ -141,7 +138,7 @@ const ItemRow = memo(function ItemRow({
           type="button"
           onClick={onToggle}
           aria-label={open ? 'Collapse' : 'Expand'}
-          className="grid size-7 place-items-center rounded-md text-muted hover:bg-surface-2"
+          className="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-muted"
         >
           <ChevronDown className={cn('size-4 transition-transform duration-300', open && 'rotate-180')} />
         </button>
@@ -162,7 +159,7 @@ const ItemRow = memo(function ItemRow({
 export const SectionCard = memo(function SectionCard({ sectionId, autoOpen }: { sectionId: string; autoOpen?: boolean }) {
   const { update } = useEditor()
   const section = useEditorSelect((r) => r.sections.find((s) => s.id === sectionId))
-  const isTwoColumn = useEditorSelect((r) => getTemplate(r.templateId).layout === 'sidebar')
+  const isTwoColumn = useEditorSelect((r) => resolveTemplate(r).layout === 'sidebar')
   const [open, setOpen] = useState(!!autoOpen)
   const [openItem, setOpenItem] = useState<string | null>(null)
   const [renaming, setRenaming] = useState(false)
@@ -226,13 +223,13 @@ export const SectionCard = memo(function SectionCard({ sectionId, autoOpen }: { 
       }}
       style={style}
       className={cn(
-        'rounded-xl border bg-surface transition-[box-shadow,border-color] duration-200',
-        isDragging ? 'border-accent shadow-lg' : 'border-border shadow-xs',
+        'rounded-xl border bg-card transition-[box-shadow,border-color] duration-200',
+        isDragging ? 'border-primary shadow-lg' : 'border-border shadow-xs',
       )}
     >
       <div className="flex items-center gap-1 p-1.5 pr-2">
         <DragHandle {...handleProps} label={`Drag ${section.title} section`} />
-        <span className={cn('grid size-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-muted', !section.visible && 'opacity-50')}>
+        <span className={cn('grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground', !section.visible && 'opacity-50')}>
           <Icon className="size-4" />
         </span>
         {renaming ? (
@@ -245,14 +242,15 @@ export const SectionCard = memo(function SectionCard({ sectionId, autoOpen }: { 
           >
             <input
               autoFocus
+              data-native-undo
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={commitTitle}
               onKeyDown={(e) => e.key === 'Escape' && setRenaming(false)}
-              className="h-8 min-w-0 flex-1 rounded-md border border-accent bg-surface px-2 font-medium outline-none ring-4 ring-accent/15 md:text-sm"
+              className="h-8 min-w-0 flex-1 rounded-md border border-primary bg-card px-2 font-medium outline-none ring-4 ring-primary/15 md:text-sm"
               aria-label="Section title"
             />
-            <Button type="submit" size="icon-xs" variant="ghost" aria-label="Save title" onMouseDown={(e) => e.preventDefault()}>
+            <Button type="submit" size="icon-sm" variant="ghost" aria-label="Save title" onMouseDown={(e) => e.preventDefault()}>
               <Check />
             </Button>
           </form>
@@ -263,32 +261,30 @@ export const SectionCard = memo(function SectionCard({ sectionId, autoOpen }: { 
             className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pl-1.5 text-left"
             aria-expanded={open}
           >
-            <span className={cn('truncate font-medium', !section.visible && 'text-muted line-through decoration-1')}>{section.title}</span>
+            <span className={cn('truncate font-medium', !section.visible && 'text-muted-foreground line-through decoration-1')}>{section.title}</span>
             {cfg.kind !== 'text' && (
-              <span className="shrink-0 rounded-full bg-surface-2 px-1.5 text-[11px] font-medium tabular-nums text-muted">{count}</span>
+              <span className="shrink-0 rounded-full bg-muted px-1.5 text-[11px] font-medium tabular-nums text-muted-foreground">{count}</span>
             )}
             {isTwoColumn && section.column === 'sidebar' && (
-              <span className="hidden shrink-0 rounded-full bg-accent-soft px-1.5 text-[11px] font-medium text-accent-foreground sm:inline">
+              <span className="hidden shrink-0 rounded-full bg-primary-soft px-1.5 text-[11px] font-medium text-primary-soft-foreground sm:inline">
                 Sidebar
               </span>
             )}
           </button>
         )}
-        <Tooltip content={section.visible ? 'Hide section' : 'Show section'}>
+        <Tip content={section.visible ? 'Hide section' : 'Show section'}>
           <Button
             variant="subtle"
-            size="icon-sm"
+            size="icon"
             onClick={() => mutate((s) => void (s.visible = !s.visible))}
             aria-label={section.visible ? 'Hide section' : 'Show section'}
           >
             {section.visible ? <Eye /> : <EyeOff />}
           </Button>
-        </Tooltip>
+        </Tip>
         <Menu>
-          <MenuTrigger asChild>
-            <Button variant="subtle" size="icon-sm" aria-label="Section actions">
-              <Ellipsis />
-            </Button>
+          <MenuTrigger render={<Button variant="subtle" size="icon" aria-label="Section actions" />}>
+            <Ellipsis />
           </MenuTrigger>
           <MenuContent>
             <MenuItem
@@ -321,7 +317,7 @@ export const SectionCard = memo(function SectionCard({ sectionId, autoOpen }: { 
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-label={open ? 'Collapse section' : 'Expand section'}
-          className="grid size-8 place-items-center rounded-lg text-muted hover:bg-surface-2"
+          className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
         >
           <ChevronDown className={cn('size-4 transition-transform duration-300 ease-[var(--ease-out-expo)]', open && 'rotate-180')} />
         </button>
@@ -341,7 +337,7 @@ export const SectionCard = memo(function SectionCard({ sectionId, autoOpen }: { 
               ) : (
                 <div className="flex flex-col gap-2">
                   {count === 0 && (
-                    <p className="rounded-lg border border-dashed border-border px-3 py-5 text-center text-sm text-muted">
+                    <p className="rounded-lg border border-dashed border-border px-3 py-5 text-center text-sm text-muted-foreground">
                       Nothing here yet.
                     </p>
                   )}
@@ -359,7 +355,7 @@ export const SectionCard = memo(function SectionCard({ sectionId, autoOpen }: { 
                       />
                     ))}
                   </SortableList>
-                  <Button variant="outline" size="md" onClick={addItem} className="mt-1 w-full border-dashed">
+                  <Button variant="outline" size="lg" onClick={addItem} className="mt-1 w-full border-dashed">
                     <Plus /> {cfg.addLabel}
                   </Button>
                 </div>

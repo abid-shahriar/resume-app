@@ -3,8 +3,7 @@ import { useCallback, useState } from 'react'
 import { create } from 'zustand'
 import { printResume } from '@/components/print'
 import { Button } from '@/components/ui/button'
-import { SwitchRow } from '@/components/ui/controls'
-import { Dialog } from '@/components/ui/dialog'
+import { ResponsiveDialog, SwitchRow } from '@/components/kit'
 import type { Resume } from '@/lib/types'
 
 const TIP_KEY = 'vitae:pdf-tip-dismissed'
@@ -46,7 +45,7 @@ export function DownloadDialog() {
   }
 
   return (
-    <Dialog
+    <ResponsiveDialog
       open={!!resume}
       onOpenChange={(o) => !o && close()}
       size="md"
@@ -54,10 +53,10 @@ export function DownloadDialog() {
       description="Your browser's print dialog will open. It creates a crisp PDF with selectable text."
       footer={
         <>
-          <Button variant="outline" onClick={close}>
+          <Button variant="outline" size="lg" onClick={close}>
             Cancel
           </Button>
-          <Button onClick={go}>
+          <Button size="lg" onClick={go}>
             <Printer /> Open print dialog
           </Button>
         </>
@@ -78,7 +77,7 @@ export function DownloadDialog() {
           </>,
         ].map((step, i) => (
           <li key={i} className="flex gap-3">
-            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-accent-soft text-xs font-semibold text-accent-foreground">
+            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary-soft text-xs font-semibold text-primary-soft-foreground">
               {i + 1}
             </span>
             <span className="pt-0.5 text-foreground/85">{step}</span>
@@ -88,6 +87,6 @@ export function DownloadDialog() {
       <div className="mt-5 rounded-xl border border-border px-3 py-1.5">
         <SwitchRow label="Don't show this again" checked={dontShow} onCheckedChange={setDontShow} />
       </div>
-    </Dialog>
+    </ResponsiveDialog>
   )
 }

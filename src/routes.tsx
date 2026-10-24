@@ -1,8 +1,9 @@
-import { lazy, Suspense, ViewTransition } from 'react'
-import { Outlet, ScrollRestoration, type RouteObject } from 'react-router'
-import { Toaster } from 'sonner'
+import { motion } from 'motion/react'
+import { lazy, Suspense } from 'react'
+import { ScrollRestoration, useLocation, useOutlet, type RouteObject } from 'react-router'
 import { PrintHost } from './components/print'
-import { TooltipProvider } from './components/ui/controls'
+import { Toaster } from './components/ui/sonner'
+import { TooltipProvider } from './components/ui/tooltip'
 import { useTheme } from './lib/theme'
 import HomePage from './pages/HomePage'
 import NotFound from './pages/NotFound'
@@ -13,35 +14,39 @@ const EditorPage = lazy(() => import('./features/editor/EditorPage'))
 function EditorFallback() {
   return (
     <div className="grid h-dvh place-items-center bg-background">
-      <div className="size-6 animate-spin rounded-full border-2 border-border border-t-accent" />
+      <div className="size-6 animate-spin rounded-full border-2 border-border border-t-primary" />
     </div>
   )
 }
 
-function RootLayout() {
-  const { theme } = useTheme()
-  const dark = theme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+/**
+ * Fades each page in on navigation. Opacity only: a transform on this wrapper
+ * would break `position: fixed/sticky` descendants while animating.
+ */
+function AnimatedOutlet() {
+  const { pathname } = useLocation()
+  const outlet = useOutlet()
   return (
-    <TooltipProvider>
-      <ViewTransition default="page">
-        <div className="min-h-dvh">
-          <Outlet />
-        </div>
-      </ViewTransition>
+    <motion.div
+      key={pathname}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+      className="min-h-dvh"
+    >
+      {outlet}
+    </motion.div>
+  )
+}
+
+function RootLayout() {
+  useTheme() // keeps the <html> class in sync with the saved preference
+  return (
+    <TooltipProvider delay={400}>
+      <AnimatedOutlet />
       <ScrollRestoration />
       <PrintHost />
-      <Toaster
-        position="bottom-center"
-        theme={dark ? 'dark' : 'light'}
-        offset={{ bottom: 24 }}
-        mobileOffset={{ bottom: 88 }}
-        toastOptions={{
-          classNames: {
-            toast: '!rounded-xl !border-border !bg-surface !text-foreground !shadow-lg !font-sans',
-            description: '!text-muted',
-          },
-        }}
-      />
+      <Toaster position="bottom-center" offset={{ bottom: 24 }} mobileOffset={{ bottom: 88 }} />
     </TooltipProvider>
   )
 }

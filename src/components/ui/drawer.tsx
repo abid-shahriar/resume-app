@@ -55,6 +55,10 @@ function DrawerTrigger({ ...props }: DrawerPrimitive.Trigger.Props) {
   return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />
 }
 
+function DrawerSwipeArea({ ...props }: DrawerPrimitive.SwipeArea.Props) {
+  return <DrawerPrimitive.SwipeArea data-slot="drawer-swipe-area" {...props} />
+}
+
 function DrawerPortal({ ...props }: DrawerPrimitive.Portal.Props) {
   return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />
 }
@@ -217,6 +221,7 @@ export {
   DrawerPortal,
   DrawerOverlay,
   DrawerSwipeHandle,
+  DrawerSwipeArea,
   DrawerTrigger,
   DrawerClose,
   DrawerContent,

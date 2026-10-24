@@ -8,6 +8,11 @@ import { ResumeDocument } from '@/templates/ResumeDocument'
 
 const usePrintJob = create<{ resume: Resume | null }>(() => ({ resume: null }))
 
+/** File name (without extension) used for PDFs, e.g. "Jane_Doe_Resume". */
+export function resumeFileName(resume: Resume) {
+  return (slugify(resume.basics.name || resume.title) || 'my').replace(/-/g, '_') + '_Resume'
+}
+
 function getRoot() {
   let el = document.getElementById('print-root')
   if (!el) {
@@ -28,7 +33,7 @@ let titleBeforePrint: string | null = null
 export async function printResume(resume: Resume) {
   const job = ++jobSeq
   const { headingFont, bodyFont, pageSize } = resume.design
-  loadFonts([headingFont, bodyFont])
+  const fontSheets = loadFonts([headingFont, bodyFont])
 
   const style = document.createElement('style')
   style.id = 'print-page-style'
@@ -38,9 +43,10 @@ export async function printResume(resume: Resume) {
 
   // The browser uses the document title as the default PDF file name
   titleBeforePrint ??= document.title
-  document.title = slugify(resume.basics.name || resume.title).replace(/-/g, '_') + '_Resume'
+  document.title = resumeFileName(resume)
 
   flushSync(() => usePrintJob.setState({ resume }))
+  await Promise.race([fontSheets, new Promise((r) => setTimeout(r, 3000))])
   await waitForFonts([headingFont, bodyFont], 3000)
   // Wait for images (photo) to decode
   const imgs = Array.from(getRoot().querySelectorAll('img'))

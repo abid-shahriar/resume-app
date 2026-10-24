@@ -42,8 +42,8 @@ export function slugify(s: string) {
   )
 }
 
-export function downloadFile(filename: string, content: string, type = 'application/json') {
-  const blob = new Blob([content], { type })
+export function downloadFile(filename: string, content: string | Blob, type = 'application/json') {
+  const blob = content instanceof Blob ? content : new Blob([content], { type })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -51,7 +51,8 @@ export function downloadFile(filename: string, content: string, type = 'applicat
   document.body.appendChild(a)
   a.click()
   a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  // Some browsers read the blob lazily after the click; keep it alive for a while
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 export const prefersReducedMotion = () =>

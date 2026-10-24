@@ -100,7 +100,7 @@ export function EditorHeader() {
           <ChevronLeft />
         </Button>
       </Tip>
-      <Link to="/" className="hidden rounded-lg lg:block" aria-label="Vitae home">
+      <Link to="/" className="hidden rounded-lg lg:block" aria-label="CvGhor home">
         <Logo compact />
       </Link>
       <span className="mx-1 hidden h-5 w-px bg-border lg:block" />

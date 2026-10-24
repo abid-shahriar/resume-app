@@ -49,21 +49,31 @@ export function fontStack(family: string): string {
   return def ? `"${def.family}", ${def.fallback}` : `"${family}", ${SANS}`
 }
 
-const loaded = new Set<string>()
+/** Stylesheet load per family, so callers can wait for the @font-face rules to exist */
+const loaded = new Map<string, Promise<void>>()
 
 /** Injects the Google Fonts stylesheet for the given families (deduplicated). */
-export function loadFonts(families: string[]) {
-  if (typeof document === 'undefined') return
-  const missing = [...new Set(families)].filter((f) => f && BY_FAMILY.has(f) && !loaded.has(f))
-  if (!missing.length) return
-  missing.forEach((f) => loaded.add(f))
-  const params = missing
-    .map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:${BY_FAMILY.get(f)!.spec}`)
-    .join('&')
-  const link = document.createElement('link')
-  link.rel = 'stylesheet'
-  link.href = `https://fonts.googleapis.com/css2?${params}&display=swap`
-  document.head.appendChild(link)
+export function loadFonts(families: string[]): Promise<void> {
+  if (typeof document === 'undefined') return Promise.resolve()
+  const wanted = [...new Set(families)].filter((f) => f && BY_FAMILY.has(f))
+  const missing = wanted.filter((f) => !loaded.has(f))
+  if (missing.length) {
+    const params = missing
+      .map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:${BY_FAMILY.get(f)!.spec}`)
+      .join('&')
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    // CORS mode makes the @font-face rules readable, so PDF capture can embed the fonts
+    link.crossOrigin = 'anonymous'
+    link.href = `https://fonts.googleapis.com/css2?${params}&display=swap`
+    const sheet = new Promise<void>((resolve) => {
+      link.onload = () => resolve()
+      link.onerror = () => resolve()
+    })
+    missing.forEach((f) => loaded.set(f, sheet))
+    document.head.appendChild(link)
+  }
+  return Promise.all(wanted.map((f) => loaded.get(f))).then(() => undefined)
 }
 
 /** Resolves once the given families are usable (or after a timeout). */

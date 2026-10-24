@@ -95,7 +95,7 @@ export const useResumeStore = create<ResumeState>()(
           }),
       }),
       {
-        name: 'vitae:store',
+        name: 'cvghor:store',
         version: 1,
         storage: createJSONStorage(() => debouncedStorage),
         partialize: (s) => ({ resumes: s.resumes }),
@@ -154,12 +154,12 @@ export function useResumeList() {
 }
 
 if (import.meta.env.DEV && typeof window !== 'undefined') {
-  Object.assign(window, { __vitae: useResumeStore, __vitaeDesign: templateDesign })
+  Object.assign(window, { __cvghor: useResumeStore, __cvghorDesign: templateDesign })
 }
 
 /** Keep tabs in sync: when another tab writes, rehydrate. */
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === 'vitae:store') void useResumeStore.persist.rehydrate()
+    if (e.key === 'cvghor:store') void useResumeStore.persist.rehydrate()
   })
 }

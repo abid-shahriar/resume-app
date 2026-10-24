@@ -36,7 +36,7 @@ export const ResumePreview = memo(function ResumePreview({
   zoom?: Zoom
   padding?: number
   maxFitScale?: number
-  onLayout?: (info: { pages: number; scale: number }) => void
+  onLayout?: (info: { pages: number; scale: number; fitScale: number }) => void
   className?: string
 }) {
   // Keeps typing responsive on slow devices: the preview may lag a frame behind the inputs.
@@ -62,13 +62,13 @@ export const ResumePreview = memo(function ResumePreview({
   }, [inner])
 
   useEffect(() => {
-    if (scale > 0) onLayout?.({ pages, scale })
-  }, [pages, scale, onLayout])
+    if (scale > 0) onLayout?.({ pages, scale, fitScale })
+  }, [pages, scale, fitScale, onLayout])
 
   return (
     <div ref={containerRef} className={cn('relative w-full', className)}>
       {scale > 0 && (
-        <div className="relative mx-auto" style={{ width: page.width * scale, height: pages * page.height * scale }}>
+        <div data-sheet className="relative mx-auto" style={{ width: page.width * scale, height: pages * page.height * scale }}>
           <div
             className="absolute left-0 top-0 origin-top-left overflow-hidden bg-white shadow-[var(--shadow-paper)]"
             style={{ width: page.width, height: pages * page.height, transform: `scale(${scale})`, borderRadius: 2 / scale }}
@@ -114,15 +114,20 @@ export const ResumeThumb = memo(function ResumeThumb({
   resume,
   className,
   eager,
+  priority,
 }: {
   resume: Resume
   className?: string
   /** Render during browser idle time even before scrolled into view */
   eager?: boolean
+  /** Render on mount (above-the-fold art) */
+  priority?: boolean
 }) {
   const ref = useRef<HTMLDivElement | null>(null)
   const [width, setWidth] = useState(0)
-  const [visible, setVisible] = useState(false)
+  const [seen, setVisible] = useState(false)
+  // A thumbnail that becomes priority later (e.g. the next carousel slide) renders right away
+  const visible = seen || !!priority
   const page = PAGE_SIZES_PX[resume.design.pageSize] ?? PAGE_SIZES_PX.a4
 
   useEffect(() => {

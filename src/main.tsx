@@ -3,9 +3,15 @@ import { createRoot } from 'react-dom/client'
 import { createBrowserRouter } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
 import './index.css'
+import { reloadForStaleChunk } from './lib/chunks'
 import { routes } from './routes'
 
 const router = createBrowserRouter(routes)
+
+// Vite fires this when a chunk's preload fails (typically a stale tab after a deploy)
+window.addEventListener('vite:preloadError', (e) => {
+  if (reloadForStaleChunk()) e.preventDefault()
+})
 
 if (import.meta.env.DEV) {
   // Headless PDF check: /?__print=<templateId>[&long=1]

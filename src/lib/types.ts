@@ -72,9 +72,11 @@ export interface ContactField {
 }
 
 export interface PhotoCrop {
-  /** Cropped area in percentages of the (rotated) source image */
+  /** Cropped area as fractions (0–1) of the rotated source image. Older saves used percentages. */
   area: { x: number; y: number; width: number; height: number }
   rotation: number
+  /** Mirrored horizontally */
+  flip?: boolean
 }
 
 export interface Basics {

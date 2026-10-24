@@ -1,4 +1,4 @@
-# Vitae — free resume & CV builder
+# CvGhor — free resume & CV builder
 
 A fast, private resume builder that runs entirely in the browser. No backend, no accounts: resumes are saved to `localStorage`.
 

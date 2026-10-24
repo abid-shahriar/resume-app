@@ -4,12 +4,14 @@ import { ScrollRestoration, useLocation, useOutlet, type RouteObject } from 'rea
 import { PrintHost } from './components/print'
 import { Toaster } from './components/ui/sonner'
 import { TooltipProvider } from './components/ui/tooltip'
+import { importWithReload } from './lib/chunks'
 import { useTheme } from './lib/theme'
 import HomePage from './pages/HomePage'
 import NotFound from './pages/NotFound'
+import RouteError from './pages/RouteError'
 import TemplatesPage from './pages/TemplatesPage'
 
-const EditorPage = lazy(() => import('./features/editor/EditorPage'))
+const EditorPage = lazy(() => importWithReload(() => import('./features/editor/EditorPage')))
 
 function EditorFallback() {
   return (
@@ -55,6 +57,7 @@ export const routes: RouteObject[] = [
   {
     path: '/',
     element: <RootLayout />,
+    errorElement: <RouteError />,
     children: [
       { index: true, element: <HomePage /> },
       { path: 'templates', element: <TemplatesPage /> },

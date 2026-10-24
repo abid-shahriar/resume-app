@@ -4,20 +4,32 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Vitae is a free, private resume and CV builder. 24 professional templates, drag-and-drop editing, live preview and PDF export. No sign-up, everything stays on your device." />
+    <meta name="description" content="CvGhor is a free, private resume and CV builder. 25 professional templates, a custom layout builder, drag-and-drop editing, live preview and PDF export. No sign-up, everything stays on your device." />
     <meta name="theme-color" content="#f7f8f8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1d1e23" media="(prefers-color-scheme: dark)" />
-    <meta property="og:title" content="Vitae — Free Resume & CV Builder" />
-    <meta property="og:description" content="Build a beautiful resume in minutes. 24 templates, live preview, PDF export. Free, private, no sign-up." />
+    <link rel="canonical" href="https://cvghor.vercel.app/" />
+    <meta property="og:site_name" content="CvGhor" />
+    <meta property="og:title" content="CvGhor — Free Resume & CV Builder" />
+    <meta property="og:description" content="Build a beautiful resume in minutes. 25 templates, live preview, PDF export. Free, private, no sign-up." />
     <meta property="og:type" content="website" />
-    <title>Vitae — Free Resume & CV Builder</title>
+    <meta property="og:url" content="https://cvghor.vercel.app/" />
+    <meta name="twitter:card" content="summary" />
+    <title>CvGhor — Free Resume & CV Builder</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <script>
-      // Apply the saved theme before first paint to avoid a flash.
       (function () {
         try {
-          var t = localStorage.getItem('vitae:theme') || 'system'
+          // One-time move of data saved under the app's old name
+          localStorage.removeItem('vitae:pdf-tip-dismissed')
+          ;['store', 'theme'].forEach(function (k) {
+            var old = localStorage.getItem('vitae:' + k)
+            if (old === null) return
+            if (localStorage.getItem('cvghor:' + k) === null) localStorage.setItem('cvghor:' + k, old)
+            localStorage.removeItem('vitae:' + k)
+          })
+          // Apply the saved theme before first paint to avoid a flash.
+          var t = localStorage.getItem('cvghor:theme') || 'system'
           var dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
           if (dark) document.documentElement.classList.add('dark')
         } catch (e) {}

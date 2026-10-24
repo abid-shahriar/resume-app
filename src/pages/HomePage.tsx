@@ -16,7 +16,7 @@ import {
   Upload,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { ResumeThumb } from '@/components/ResumePreview'
@@ -26,7 +26,8 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, ResponsiveDial
 import { Input } from '@/components/ui/input'
 import { exportAll, exportResume, parseImport } from '@/lib/io'
 import type { Resume } from '@/lib/types'
-import { formatRelativeTime } from '@/lib/utils'
+import { loadFonts, waitForFonts } from '@/lib/fonts'
+import { cn, formatRelativeTime } from '@/lib/utils'
 import { useResumeList, useResumeStore } from '@/store/resumes'
 import { templatePreview } from '@/templates/previews'
 import { getTemplate, TEMPLATES, type TemplateDef } from '@/templates/registry'
@@ -65,26 +66,58 @@ const FEATURES = [
   },
 ]
 
+const HERO_PICKS = ['aurora', 'harvard', 'horizon']
+
+/**
+ * Hidden until the thumbnails' web fonts are in (capped), then revealed in one
+ * pass, so the cards don't pop in blank and reflow while they animate.
+ */
+function useHeroReady(previews: Resume[]) {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    let raf = 0
+    const families = previews.flatMap((r) => [r.design.headingFont, r.design.bodyFont])
+    const fonts = loadFonts(families).then(() => waitForFonts(families, 1200))
+    const cap = new Promise((r) => setTimeout(r, 1500))
+    void Promise.race([fonts, cap]).then(() => {
+      // Two frames so the reveal starts after the swapped text has been laid out
+      if (!cancelled) raf = requestAnimationFrame(() => (raf = requestAnimationFrame(() => setReady(true))))
+    })
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf)
+    }
+  }, [previews])
+  return ready
+}
+
 function HeroArt() {
-  const picks = ['aurora', 'harvard', 'horizon']
+  // Stable objects so the memoized thumbnails don't re-render when the reveal starts
+  const previews = useMemo(() => HERO_PICKS.map((id) => templatePreview(id)), [])
+  const ready = useHeroReady(previews)
   return (
     <div className="relative mx-auto h-[300px] w-full max-w-[560px] sm:h-[420px]" aria-hidden>
       <div className="absolute inset-x-10 bottom-0 top-10 rounded-[40px] bg-gradient-to-br from-primary/25 via-primary/5 to-transparent blur-3xl" />
-      {picks.map((id, i) => {
+      {previews.map((preview, i) => {
         const pos = [
           'left-[4%] top-[14%] -rotate-[7deg] w-[38%]',
           'left-1/2 top-0 z-10 w-[44%] -translate-x-1/2',
           'right-[4%] top-[14%] rotate-[7deg] w-[38%]',
         ][i]
         return (
-          <div
-            key={id}
-            className={`absolute ${pos} animate-fade-up`}
-            style={{ animationDelay: `${150 + i * 120}ms` }}
-          >
-            <div className="animate-float" style={{ animationDelay: `${i * -2}s` }}>
-              <div className="overflow-hidden rounded-md shadow-[var(--shadow-paper)] ring-1 ring-black/5">
-                <ResumeThumb resume={templatePreview(id)} />
+          <div key={HERO_PICKS[i]} className={`absolute ${pos}`}>
+            <div
+              className={cn(
+                'transition-[opacity,translate] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[opacity,translate] motion-reduce:transition-none',
+                ready ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+              )}
+              style={{ transitionDelay: `${i * 110}ms` }}
+            >
+              <div className="animate-float will-change-transform" style={{ animationDelay: `${i * -2}s` }}>
+                <div className="overflow-hidden rounded-md shadow-[var(--shadow-paper)] ring-1 ring-black/5">
+                  <ResumeThumb resume={preview} priority />
+                </div>
               </div>
             </div>
           </div>

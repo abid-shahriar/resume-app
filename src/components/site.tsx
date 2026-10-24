@@ -11,10 +11,17 @@ export function Logo({ className, compact }: { className?: string; compact?: boo
     <span className={cn('inline-flex items-center gap-2 font-semibold tracking-tight', className)}>
       <svg viewBox="0 0 32 32" className="size-7 shrink-0" aria-hidden>
         <rect width="32" height="32" rx="8" className="fill-foreground" />
-        <path d="M9 9.5h3.2l3.8 10.2 3.8-10.2H23L17.6 23h-3.2z" className="fill-background" />
-        <circle cx="23.5" cy="22" r="2" fill="#2cc4b4" />
+        <path d="M16 7.5 24 14v8.8a1.7 1.7 0 0 1-1.7 1.7H9.7A1.7 1.7 0 0 1 8 22.8V14z" className="fill-background" />
+        <circle cx="12.4" cy="17.3" r="1.9" fill="#2cc4b4" />
+        <rect x="15.4" y="15.6" width="5.4" height="1.5" rx=".75" className="fill-foreground" />
+        <rect x="15.4" y="18.2" width="3.6" height="1.5" rx=".75" className="fill-foreground" />
+        <rect x="10.5" y="21.1" width="10.3" height="1.5" rx=".75" className="fill-foreground opacity-50" />
       </svg>
-      {!compact && <span className="text-[17px]">Vitae</span>}
+      {!compact && (
+        <span className="text-[17px]">
+          Cv<span className="text-primary">Ghor</span>
+        </span>
+      )}
     </span>
   )
 }
@@ -38,7 +45,7 @@ export function SiteHeader({ right }: { right?: ReactNode }) {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 sm:px-6">
-        <Link to="/" className="mr-auto rounded-lg outline-offset-4" aria-label="Vitae home">
+        <Link to="/" className="mr-auto rounded-lg outline-offset-4" aria-label="CvGhor home">
           <Logo />
         </Link>
         <nav className="flex items-center gap-1">

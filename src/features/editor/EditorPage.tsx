@@ -1,12 +1,11 @@
-import { Download, Eye, LayoutTemplate, Maximize, Minus, Palette, PanelsTopLeft, PenLine, Plus, X } from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
+import { ChevronLeft, Download, LayoutTemplate, Palette, PanelsTopLeft, PenLine, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState, type ComponentType, type CSSProperties } from 'react'
 import { useParams, useSearchParams } from 'react-router'
 import { create } from 'zustand'
-import { Tip, useIsDesktop } from '@/components/kit'
-import { ResumePreview, type Zoom } from '@/components/ResumePreview'
+import { useIsDesktop } from '@/components/kit'
+import { ZoomablePreview } from '@/components/ZoomablePreview'
 import { Button } from '@/components/ui/button'
-import { Drawer, DrawerClose, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
+import { Drawer, DrawerClose, DrawerContent, DrawerSwipeArea, DrawerTitle } from '@/components/ui/drawer'
 import { cn } from '@/lib/utils'
 import NotFound from '@/pages/NotFound'
 import { redo, undo, useResumeStore } from '@/store/resumes'
@@ -34,59 +33,17 @@ const usePreviewDrawer = create<{ open: boolean; setOpen: (open: boolean) => voi
   setOpen: (open) => set({ open }),
 }))
 
-const ZOOM_STEPS = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2]
-
 function DesktopPreview() {
   const { id } = useEditor()
   const resume = useResumeStore((s) => s.resumes[id])
-  const [zoom, setZoom] = useState<Zoom>('fit')
-  const [info, setInfo] = useState({ pages: 1, scale: 1 })
-  const onLayout = useCallback((v: { pages: number; scale: number }) => setInfo(v), [])
-
-  const step = (dir: 1 | -1) => {
-    const current = zoom === 'fit' ? info.scale : zoom
-    const next = dir === 1 ? ZOOM_STEPS.find((z) => z > current + 0.001) : [...ZOOM_STEPS].reverse().find((z) => z < current - 0.001)
-    if (next) setZoom(next)
-  }
-
-  return (
-    <>
-      <div className="absolute inset-0 overflow-auto scrollbar-thin">
-        <div className="min-h-full pb-24 pt-10">
-          <ResumePreview resume={resume} zoom={zoom} padding={48} maxFitScale={1.1} onLayout={onLayout} />
-        </div>
-      </div>
-      <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-border bg-popover/90 p-1 shadow-lg backdrop-blur-xl">
-        <Tip content="Zoom out" side="top">
-          <Button variant="ghost" size="icon" className="rounded-full" onClick={() => step(-1)} aria-label="Zoom out">
-            <Minus />
-          </Button>
-        </Tip>
-        <Tip content={zoom === 'fit' ? 'Fit to width' : 'Reset to fit'} side="top">
-          <button
-            type="button"
-            onClick={() => setZoom('fit')}
-            className="flex h-8 min-w-14 items-center justify-center gap-1 rounded-full px-2 text-xs font-medium tabular-nums transition-colors hover:bg-muted"
-          >
-            {zoom === 'fit' && <Maximize className="size-3 text-muted-foreground" />}
-            {Math.round(info.scale * 100)}%
-          </button>
-        </Tip>
-        <Tip content="Zoom in" side="top">
-          <Button variant="ghost" size="icon" className="rounded-full" onClick={() => step(1)} aria-label="Zoom in">
-            <Plus />
-          </Button>
-        </Tip>
-        <span className="mx-1 h-4 w-px bg-border" />
-        <span className="px-2.5 text-xs font-medium tabular-nums text-muted-foreground">
-          {info.pages} {info.pages === 1 ? 'page' : 'pages'}
-        </span>
-      </div>
-    </>
-  )
+  return <ZoomablePreview resume={resume} padding={48} maxFitScale={1.1} className="absolute inset-0" innerClassName="pb-24 pt-10" />
 }
 
-/** Phone/tablet preview: a swipe-to-dismiss bottom drawer over the editor. */
+/**
+ * Phone/tablet preview: a side sheet that follows the finger. Swipe left on the
+ * edge handle (or anywhere along the right edge) to pull it in, swipe right to
+ * put it away. Tapping the handle opens it too.
+ */
 function PreviewDrawer() {
   const { id } = useEditor()
   const resume = useResumeStore((s) => s.resumes[id])
@@ -97,16 +54,37 @@ function PreviewDrawer() {
   const onLayout = useCallback((v: { pages: number }) => setPages(v.pages), [])
 
   return (
-    <Drawer open={open} onOpenChange={(o) => setOpen(o)} showSwipeHandle>
-      <DrawerContent
-        className="bg-canvas"
-        style={{ '--drawer-height': 'calc(100dvh - 1.25rem)', '--drawer-content-max-height': 'none' } as CSSProperties}
+    <Drawer open={open} onOpenChange={(o) => setOpen(o)} swipeDirection="right" showSwipeHandle>
+      {/* Thin invisible strip along the edge, between the header and the tab bar */}
+      <DrawerSwipeArea className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] right-0 top-14 z-30 w-3 data-open:pointer-events-none" />
+      <DrawerSwipeArea
+        role="button"
+        tabIndex={0}
+        aria-label="Open preview"
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setOpen(true)
+          }
+        }}
+        className="group fixed right-0 top-1/2 z-40 -translate-y-1/2 cursor-pointer pl-3 outline-none transition-opacity duration-200 data-open:pointer-events-none data-open:opacity-0"
       >
-        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-background/95 px-3 pb-2.5 pt-1">
+        <span className="flex h-32 w-8 flex-col items-center justify-center gap-2.5 rounded-l-2xl border border-r-0 border-border bg-background/90 text-muted-foreground shadow-[0_6px_24px_-6px_var(--shadow-color)] backdrop-blur-xl transition-[width,color] group-hover:text-foreground group-focus-visible:ring-3 group-focus-visible:ring-ring/50 group-data-swiping:w-10">
+          <span className="h-8 w-1 rounded-full bg-primary/70" />
+          <span className="text-[11px] font-semibold tracking-wide [writing-mode:vertical-rl] rotate-180">Preview</span>
+          <ChevronLeft className="size-4" />
+        </span>
+      </DrawerSwipeArea>
+      <DrawerContent
+        className="bg-canvas pt-[env(safe-area-inset-top)]"
+        style={{ '--drawer-content-width': 'min(calc(100% - 0.75rem), 40rem)' } as CSSProperties}
+      >
+        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-background/95 py-2.5 pl-1 pr-3">
           <div className="min-w-0 flex-1">
             <DrawerTitle className="text-sm font-semibold">Preview</DrawerTitle>
             <p className="text-xs text-muted-foreground">
-              {pages} {pages === 1 ? 'page' : 'pages'} · Swipe down to close
+              {pages} {pages === 1 ? 'page' : 'pages'} · Pinch to zoom
             </p>
           </div>
           <Button onClick={() => download(resume)}>
@@ -116,9 +94,16 @@ function PreviewDrawer() {
             <X />
           </DrawerClose>
         </div>
-        <div className="canvas-dots min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
-          {open && <ResumePreview resume={resume} padding={12} maxFitScale={1} onLayout={onLayout} />}
-        </div>
+        {open && (
+          <ZoomablePreview
+            resume={resume}
+            padding={10}
+            maxFitScale={1}
+            onLayout={onLayout}
+            className="canvas-dots min-h-0 flex-1"
+            innerClassName="pb-24 pt-4"
+          />
+        )}
       </DrawerContent>
     </Drawer>
   )
@@ -195,28 +180,6 @@ function MobileTabBar({ tab, onChange }: { tab: PanelId; onChange: (t: PanelId) 
         })}
       </div>
     </nav>
-  )
-}
-
-function PreviewFab() {
-  const open = usePreviewDrawer((s) => s.open)
-  const setOpen = usePreviewDrawer((s) => s.setOpen)
-  return (
-    <AnimatePresence>
-      {!open && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.85, y: 8 }}
-          transition={{ type: 'spring', stiffness: 420, damping: 30 }}
-          className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom)+0.875rem)] right-4 z-40"
-        >
-          <Button size="xl" className="rounded-full px-5 shadow-lg" onClick={() => setOpen(true)}>
-            <Eye /> Preview
-          </Button>
-        </motion.div>
-      )}
-    </AnimatePresence>
   )
 }
 
@@ -309,7 +272,6 @@ function EditorShell() {
       {!isDesktop && (
         <>
           <MobileTabBar tab={tab} onChange={changeTab} />
-          <PreviewFab />
           <PreviewDrawer />
         </>
       )}
@@ -329,11 +291,11 @@ export default function EditorPage() {
   }, [id])
 
   useEffect(() => {
-    if (title) document.title = `${title} — Vitae`
+    if (title) document.title = `${title} — CvGhor`
   }, [title])
   useEffect(
     () => () => {
-      document.title = 'Vitae — Free Resume & CV Builder'
+      document.title = 'CvGhor — Free Resume & CV Builder'
     },
     [],
   )

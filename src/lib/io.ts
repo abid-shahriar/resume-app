@@ -5,7 +5,9 @@ import { SECTION_TYPES } from './sections'
 import type { ContactField, CustomLayout, Design, PhotoCrop, Resume, Section, SectionItem } from './types'
 import { downloadFile, slugify, uid } from './utils'
 
-const FORMAT = 'vitae-resume'
+const FORMAT = 'cvghor-resume'
+/** Exports made before the rename */
+const LEGACY_FORMATS = ['vitae-resume']
 
 export function exportResume(resume: Resume) {
   const payload = { format: FORMAT, version: 1, exportedAt: new Date().toISOString(), resume }
@@ -14,7 +16,7 @@ export function exportResume(resume: Resume) {
 
 export function exportAll(resumes: Resume[]) {
   const payload = { format: FORMAT, version: 1, exportedAt: new Date().toISOString(), resumes }
-  downloadFile(`vitae-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(payload, null, 2))
+  downloadFile(`cvghor-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(payload, null, 2))
 }
 
 /* ------------------------------- sanitizing -------------------------------- */
@@ -64,13 +66,13 @@ function sanitizeContact(raw: unknown): ContactField | null {
 }
 
 export function sanitizeCrop(raw: unknown): PhotoCrop | null {
-  const r = raw as { area?: Record<string, unknown>; rotation?: unknown } | null | undefined
+  const r = raw as { area?: Record<string, unknown>; rotation?: unknown; flip?: unknown } | null | undefined
   const a = r?.area
   if (!a) return null
   const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : NaN)
   const area = { x: n(a.x), y: n(a.y), width: n(a.width), height: n(a.height) }
   if (Object.values(area).some(Number.isNaN) || area.width <= 0 || area.height <= 0) return null
-  return { area, rotation: num(r?.rotation, 0, -360, 360) }
+  return { area, rotation: num(r?.rotation, 0, -360, 360), flip: r?.flip === true }
 }
 
 function sanitizeDesign(raw: unknown, templateId: string): Design {
@@ -238,7 +240,7 @@ function fromJsonResume(jr: JR): Resume {
   })
 }
 
-/** Parses an uploaded file. Supports Vitae exports (single or backup) and JSON Resume. */
+/** Parses an uploaded file. Supports CvGhor exports (single or backup) and JSON Resume. */
 export async function parseImport(file: File): Promise<Resume[]> {
   if (file.size > 10 * 1024 * 1024) throw new Error('File is too large.')
   let data: any
@@ -247,7 +249,7 @@ export async function parseImport(file: File): Promise<Resume[]> {
   } catch {
     throw new Error('This file is not valid JSON.')
   }
-  if (data?.format === FORMAT) {
+  if (data?.format === FORMAT || LEGACY_FORMATS.includes(data?.format)) {
     if (Array.isArray(data.resumes)) return data.resumes.map(sanitizeResume)
     if (data.resume) return [sanitizeResume(data.resume)]
   }
@@ -257,5 +259,5 @@ export async function parseImport(file: File): Promise<Resume[]> {
   if (data && typeof data === 'object' && 'sections' in data && 'basics' in data) {
     return [sanitizeResume(data)]
   }
-  throw new Error('Unrecognized format. Use a Vitae export or a JSON Resume file.')
+  throw new Error('Unrecognized format. Use a CvGhor export or a JSON Resume file.')
 }

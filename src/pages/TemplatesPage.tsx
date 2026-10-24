@@ -1,11 +1,13 @@
-import { ArrowRight, Check, WandSparkles } from 'lucide-react'
+import { ArrowRight, Check, WandSparkles, X, ZoomIn } from 'lucide-react'
 import { stagger, useAnimate } from 'motion/react'
 import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { ResumeThumb } from '@/components/ResumePreview'
 import { SiteFooter, SiteHeader } from '@/components/site'
 import { Button } from '@/components/ui/button'
-import { ResponsiveDialog, SwitchRow } from '@/components/kit'
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { ZoomablePreview } from '@/components/ZoomablePreview'
+import { ResponsiveDialog, SwitchRow, useMediaQuery } from '@/components/kit'
 import { cn } from '@/lib/utils'
 import { useResumeStore } from '@/store/resumes'
 import { templatePreview } from '@/templates/previews'
@@ -144,6 +146,70 @@ function FilterPills({ value, onChange }: { value: Filter; onChange: (f: Filter)
   )
 }
 
+/**
+ * Phone template sheet: a full-height preview you can swipe sideways to browse
+ * the other templates in the current filter (scroll snap, one per slide).
+ */
+function TemplateCarousel({
+  list,
+  selected,
+  onChange,
+  onZoom,
+}: {
+  list: TemplateDef[]
+  selected: TemplateDef
+  onChange: (t: TemplateDef) => void
+  onZoom: () => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const previews = useMemo(() => list.map((t) => templatePreview(t.id)), [list])
+  const index = Math.max(0, list.findIndex((t) => t.id === selected.id))
+  const initialIndex = useRef(index)
+
+  // Start on the tapped template (instant, before paint)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (el) el.scrollLeft = initialIndex.current * el.clientWidth
+  }, [])
+
+  const onScroll = () => {
+    const el = ref.current
+    if (!el || !el.clientWidth) return
+    const t = list[Math.round(el.scrollLeft / el.clientWidth)]
+    if (t && t.id !== selected.id) onChange(t)
+  }
+
+  return (
+    <div className="-mx-4">
+      <div
+        ref={ref}
+        onScroll={onScroll}
+        className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {list.map((t, i) => (
+          <div key={t.id} className="flex w-full shrink-0 snap-center justify-center px-4" aria-hidden={i !== index}>
+            <button
+              type="button"
+              onClick={onZoom}
+              tabIndex={i === index ? 0 : -1}
+              aria-label={`Zoom into ${t.name}`}
+              className="group relative h-[min(52dvh,520px)] aspect-[210/297] max-w-full overflow-hidden rounded-md shadow-[var(--shadow-paper)] ring-1 ring-black/5"
+            >
+              <ResumeThumb resume={previews[i]} priority={Math.abs(i - index) <= 1} />
+              <span className="absolute bottom-2 right-2 grid size-8 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm">
+                <ZoomIn className="size-4" />
+              </span>
+            </button>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-center text-xs font-medium tabular-nums text-muted-foreground">
+        {index + 1} / {list.length} · Swipe to browse, tap to zoom
+      </p>
+    </div>
+  )
+}
+
 export default function TemplatesPage() {
   const [params] = useSearchParams()
   const [filter, setFilter] = useState<Filter>('All')
@@ -155,6 +221,14 @@ export default function TemplatesPage() {
   const createResume = useResumeStore((s) => s.createResume)
   const navigate = useNavigate()
   const visibleIds = useMemo(() => new Set(TEMPLATES.filter((t) => matches(t, filter)).map((t) => t.id)), [filter])
+  // What the phone sheet can swipe through: the gallery's current selection
+  const browseList = useMemo(() => {
+    const list = TEMPLATES.filter((t) => visibleIds.has(t.id))
+    return filter === 'All' ? [CUSTOM_DEF, ...list] : list
+  }, [filter, visibleIds])
+  const wide = useMediaQuery('(min-width: 640px)')
+  const selectedPreview = useMemo(() => (selected ? templatePreview(selected.id) : null), [selected])
+  const [zoomed, setZoomed] = useState(false)
   const [scope, animate] = useAnimate<HTMLDivElement>()
   const firstRender = useRef(true)
 
@@ -215,18 +289,44 @@ export default function TemplatesPage() {
 
       <ResponsiveDialog
         open={!!selected}
-        onOpenChange={(o) => !o && setSelected(null)}
+        onOpenChange={(o) => {
+          if (o) return
+          setSelected(null)
+          setZoomed(false)
+        }}
         size="xl"
         title={selected ? (selected.id === CUSTOM_TEMPLATE_ID ? 'Custom layout' : `${selected.name} template`) : ''}
-        description={selected?.description}
+        description={selected && <span className="line-clamp-2 sm:line-clamp-none">{selected.description}</span>}
+        footer={
+          !wide &&
+          selected && (
+            <>
+              <SwitchRow label="Start with example content" checked={withSample} onCheckedChange={setWithSample} className="px-0.5" />
+              <Button size="xl" onClick={() => use(selected)} className="w-full">
+                {selected.id === CUSTOM_TEMPLATE_ID ? 'Start building' : 'Use this template'} <ArrowRight />
+              </Button>
+            </>
+          )
+        }
       >
-        {selected && (
+        {selected && !wide && (
+          <TemplateCarousel
+            list={browseList.some((t) => t.id === selected.id) ? browseList : [selected]}
+            selected={selected}
+            onChange={setSelected}
+            onZoom={() => setZoomed(true)}
+          />
+        )}
+        {selected && wide && (
           <div className="grid gap-6 md:grid-cols-[1fr_280px]">
-            <div className="overflow-hidden rounded-xl border border-border bg-canvas p-3 sm:p-6">
-              <div className="mx-auto max-w-[520px] overflow-hidden rounded shadow-[var(--shadow-paper)]">
-                <ResumeThumb resume={templatePreview(selected.id)} />
-              </div>
-            </div>
+            <ZoomablePreview
+              key={selected.id}
+              resume={selectedPreview!}
+              padding={24}
+              maxFitScale={0.8}
+              className="canvas-dots h-[min(68dvh,720px)] overflow-hidden rounded-xl border border-border bg-canvas"
+              innerClassName="pb-20 pt-6"
+            />
             <div className="flex flex-col gap-5 md:pt-2">
               <div className="flex flex-wrap gap-1.5">
                 <span className="rounded-full bg-primary-soft px-2.5 py-1 text-xs font-medium text-primary-soft-foreground">
@@ -274,6 +374,34 @@ export default function TemplatesPage() {
           </div>
         )}
       </ResponsiveDialog>
+
+      {/* Phones: full-screen, pinch-zoomable view of the template */}
+      <Dialog open={zoomed && !!selectedPreview && !wide} onOpenChange={(o) => !o && setZoomed(false)}>
+        <DialogContent
+          showCloseButton={false}
+          className="inset-0 top-0 left-0 flex h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none bg-canvas p-0 ring-0 sm:max-w-none"
+        >
+          <div className="flex shrink-0 items-center gap-2 border-b border-border bg-background/95 py-2.5 pl-4 pr-2 pt-[max(0.625rem,env(safe-area-inset-top))]">
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="truncate text-sm font-semibold">{selected?.name}</DialogTitle>
+              <DialogDescription className="text-xs">Pinch or double-tap to zoom</DialogDescription>
+            </div>
+            <DialogClose render={<Button variant="subtle" size="icon-lg" aria-label="Close" />}>
+              <X />
+            </DialogClose>
+          </div>
+          {selectedPreview && (
+            <ZoomablePreview
+              key={selected?.id}
+              resume={selectedPreview}
+              padding={10}
+              maxFitScale={1}
+              className="canvas-dots min-h-0 flex-1"
+              innerClassName="pb-24 pt-4"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

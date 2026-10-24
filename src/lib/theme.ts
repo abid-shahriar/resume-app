@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react'
 
 export type ThemePref = 'light' | 'dark' | 'system'
-const KEY = 'vitae:theme'
+const KEY = 'cvghor:theme'
 const listeners = new Set<() => void>()
 const notify = () => listeners.forEach((l) => l())
 
